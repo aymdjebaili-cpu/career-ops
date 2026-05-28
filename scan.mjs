@@ -131,6 +131,53 @@ function buildTitleFilter(titleFilter) {
   };
 }
 
+// ── Location filter ─────────────────────────────────────────────────
+// Reads `location_filter` from portals.yml. Returns a predicate that
+// returns true when the job's location should be KEPT, false to drop.
+// Logic: drop if any excluded country/region matches the location string.
+// Empty / unknown / blank locations pass through (let Claude evaluate).
+
+function buildLocationFilter(locationFilter) {
+  if (!locationFilter) return () => true;
+  const excludeCountries = (locationFilter.exclude_countries || []).map(s => s.toLowerCase());
+  const excludeCities    = (locationFilter.exclude_cities || []).map(s => s.toLowerCase());
+  const allowedCountries = (locationFilter.allowed_countries || []).map(s => s.toLowerCase());
+  const allowedCities    = (locationFilter.allowed_cities || []).map(s => s.toLowerCase());
+  const allowedRemote    = (locationFilter.allowed_remote || []).map(s => s.toLowerCase());
+
+  // Tokens that strongly imply non-DE/EU even without explicit country (e.g. "Headquarter" is generic — keep)
+  const looksHeadquarter = (s) => /\b(headquarter|hq)\b/.test(s);
+
+  const hasAllowedHit = (lower) =>
+    allowedCountries.some(k => lower.includes(k)) ||
+    allowedCities.some(k => lower.includes(k)) ||
+    allowedRemote.some(k => lower.includes(k));
+
+  // Word-boundary check so "us" doesn't match "Munich" but does match "Georgia, US"
+  const matchesWord = (lower, kw) => {
+    if (lower.includes(kw)) {
+      const re = new RegExp(`(^|[^a-z0-9])${kw.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}([^a-z0-9]|$)`, 'i');
+      return re.test(lower);
+    }
+    return false;
+  };
+
+  return (location) => {
+    if (!location) return true; // unknown → keep, let Claude judge
+    const lower = location.toLowerCase().trim();
+    if (lower === '' || lower === 'remote' || lower === 'n/a') return true;
+    if (looksHeadquarter(lower)) return true; // ambiguous, keep
+    // If any allowed token hits, keep (handles "Berlin, Germany" matching "Berlin" or "Germany")
+    if (hasAllowedHit(lower)) return true;
+    // If any explicit exclude country hits, drop
+    if (excludeCountries.some(k => matchesWord(lower, k))) return false;
+    // If any explicit exclude city hits, drop
+    if (excludeCities.some(k => matchesWord(lower, k))) return false;
+    // Default: keep (avoid being too aggressive — let Claude judge ambiguous cases)
+    return true;
+  };
+}
+
 // ── Dedup ───────────────────────────────────────────────────────────
 
 function loadSeenUrls() {
@@ -261,6 +308,7 @@ async function main() {
   const config = parseYaml(readFileSync(PORTALS_PATH, 'utf-8'));
   const companies = config.tracked_companies || [];
   const titleFilter = buildTitleFilter(config.title_filter);
+  const locationFilter = buildLocationFilter(config.location_filter);
 
   // 2. Filter to enabled companies with detectable APIs
   const targets = companies
@@ -282,6 +330,7 @@ async function main() {
   const date = new Date().toISOString().slice(0, 10);
   let totalFound = 0;
   let totalFiltered = 0;
+  let totalFilteredLocation = 0;
   let totalDupes = 0;
   const newOffers = [];
   const errors = [];
@@ -296,6 +345,10 @@ async function main() {
       for (const job of jobs) {
         if (!titleFilter(job.title)) {
           totalFiltered++;
+          continue;
+        }
+        if (!locationFilter(job.location)) {
+          totalFilteredLocation++;
           continue;
         }
         if (seenUrls.has(job.url)) {
@@ -332,6 +385,7 @@ async function main() {
   console.log(`Companies scanned:     ${targets.length}`);
   console.log(`Total jobs found:      ${totalFound}`);
   console.log(`Filtered by title:     ${totalFiltered} removed`);
+  console.log(`Filtered by location:  ${totalFilteredLocation} removed`);
   console.log(`Duplicates:            ${totalDupes} skipped`);
   console.log(`New offers added:      ${newOffers.length}`);
 

@@ -1,0 +1,80 @@
+Barcelo Concorde Green Park Palace|reservation.gpp@concorde-tunisia.com
+Mövenpick Resort & Marine Spa Sousse|resort.sousse@moevenpick.com
+Jaz Tour Khalef|resv_jaz@travco.com
+Sousse Palace Hotel & Spa|reservation@hotel-soussepalace.com
+The Pearl Marriott Resort & Spa|sales@hotelthepearl.com
+Iberostar Selection Diar El Andalous|resa.diarelandalous@iberostar.tn
+Iberostar Selection Kantaoui Bay|kan.sv@iberostar.com
+LTI Bellevue Park|booking@lti-bellevuepark.com
+Seabel Alhambra Beach Golf & Spa|alhambra@seabelhotels.com
+Hasdrubal Thalassa & Spa Sousse|asdrubal.sousse@gnet.tn
+El Mouradi Palm Marina|info.palmmarina@elmouradi.com
+El Mouradi Palace|reservation@elmouradi.com
+El Mouradi Port El Kantaoui|info.clubelkantaoui@elmouradi.com
+El Mouradi Club Kantaoui|res.kantaoui@elmouradi.com
+El Mouradi Club Selima|res.selima@elmouradi.com
+Marhaba Palace|marhaba.palace@planet.tn
+Marhaba Beach|marhaba.beach@planet.tn
+Marhaba Club|marhaba.club@marhabahotels.com.tn
+Marhaba Salem Resort|marhaba.salem@marhabahotels.com.tn
+Marhaba Royal Salem|royal.salem@marhabahotels.com.tn
+Occidental Sousse Marhaba|soussemarhaba@occidentalhotels.com
+Abou Sofiane Hotel|booking.abs@lesoleil-hotels.com
+Riviera Hotel Sousse|booking.riv@lesoleil-hotels.com
+Thalassa Sousse Resort & Aquapark|thalassa.sousse@thalassahotels.com
+El Ksar Resort & Thalasso|reservation@hotel-elksar.com
+Riadh Palms Resort & Spa|riadh.palms@planet.tn
+Hotel Le Marabout|marabout@gnet.tn
+Hotel Kanta|hotel.kanta@planet.tn
+Tej Marhaba|tej.marhaba@planet.tn
+Cesar Palace & Casino|commercial@hotelcesartunisia.com
+El Kantaoui Center & Spa|reservation@hotel-elkantaouicenter.com
+Golf Residence|golf.residence@gnet.tn
+Hannibal Palace|hannibal.elhana@planet.tn
+Royal Jinene Sousse|r.jinene@jinenehotels.com
+Hotel Jinene|jinene@jinenehotels.com
+Orient Palace Sousse|orient.palace@planet.tn
+Hôtel Soussana|sales@soussana-hotel.com.tn
+Hotel Karawan|karawan@planet.tn
+Dar Antonia (Maison d'hôtes)|contact@darantonia.com
+Palais Du Sud Sousse|info@palaisdusud.com
+La Badira|booking@labadira.com
+The Orangers Garden Villas & Bungalows|contact@orangershotels.com
+Les Orangers Beach Resort|contact@orangershotels.com
+Bel Azur Thalassa|belazurhotels@orangers.com.tn
+Sol Azur Beach Congres|reservation.solazur@orangers.com.tn
+Radisson Blu Resort & Thalasso Hammamet|info.hammamet@radissonblu.com
+Steigenberger Marhaba Thalasso|resa.palacehammamet@marhabahotels.com.tn
+Le Royal Hammamet|email@leroyal.com
+Hasdrubal Thalassa & Spa Yasmine Hammamet|hammamet@hasdrubal-thalassa.com
+Hasdrubal Prestige Thalassa & Spa|prestige@hasdrubal-thalassa.com
+The Sindbad Hotel|sindbad@the-sindbad.com
+Le Sultan Hammamet|info@lesultan.com
+Golden Tulip President Hammamet|booking@hotelclubpresident.com
+Hotel Marco Polo|reservation@hotelmarcopolo.com.tn
+Medina Solaria & Thalasso|solaria.resa@medina.com.tn
+Medina Belisaire & Thalasso|belisaire.resa@medina.com.tn
+Medina Diar Lemdina|diar.resa@medina.com.tn
+Royal Azur Thalasso Golf|resa.royal@azurhotels.net
+TUI Blue Oceana Suites|info.oceana@ttshotels.com.tn
+Holiday Village Manar (TUI)|h.aloui@tuihotels.tn
+Delfino Beach Resort & Spa|info.delfinobeach@ttshotels.com.tn
+Aziza Beach Golf & Spa|booking@hotelaziza.com
+Phenicia Hotel|info.phenicia@sentidohotels.com.tn
+Paradis Palace|paradis.hotel@planet.tn
+Vincci Nozha Beach|contact@vinccitunisia.com
+Vincci Marillia|marillia.resa@vinccitunisia.com
+Vincci Lella Baya|lellabaya.resa@vinccitunisia.com
+El Mouradi Beach Hammamet|res.beach@elmouradi.com
+El Mouradi El Menzah|res.elmenzah@elmouradi.com
+El Mouradi Hammamet|res.hammamet@elmouradi.com
+Dar Khayam|commercial@khayamhotels.com
+Omar Khayam|reservation@khayamhotels.com
+Club Marmara Palm Beach|reservation@magiclife.tn
+Hammamet Garden Resort & Spa|htlgarden.boujbel@planet.tn
+Mediterranee Thalasso Golf|commercial@hotelmediterranee.com.tn
+Hotel Bel Air Hammamet|commercial@hotelbelair.com.tn
+Caribbean World Hammamet|cwhammamet.gm@caribbeanworld.com.tn
+Dar Hayet|darhayet@gnet.tn
+Hotel Shell Beach Yasmine Hammamet|shellbeach@planet.tn
+Hotel Samira Club|booking@samiraclub.com

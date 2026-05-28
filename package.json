@@ -15,7 +15,12 @@
     "rollback": "node update-system.mjs rollback",
     "liveness": "node check-liveness.mjs",
     "scan": "node scan.mjs",
-    "gemini:eval": "node gemini-eval.mjs"
+    "gemini:eval": "node gemini-eval.mjs",
+    "daily": "node daily-run.mjs",
+    "daily:dry": "node daily-run.mjs --dry-run",
+    "cover-letter": "node generate-cover-letter.mjs",
+    "drafts": "node save-drafts.mjs",
+    "drafts:setup": "node save-drafts.mjs --setup"
   },
   "keywords": [
     "ai",
@@ -34,6 +39,7 @@
   "dependencies": {
     "@google/generative-ai": "^0.24.1",
     "dotenv": "^16.4.5",
+    "googleapis": "^144.0.0",
     "js-yaml": "^4.1.1",
     "playwright": "^1.58.1"
   }

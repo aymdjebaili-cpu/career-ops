@@ -188,7 +188,9 @@ function parseEmailFile(filePath) {
     emailVerified: meta['EMAIL_VERIFIED'] || 'unverified',
     language: meta['LANGUAGE'] || 'EN',
     coverLetterPath: meta['COVER_LETTER_PATH'] || null,
+    coverLetterPdf: meta['COVER_LETTER_PDF'] || null,
     cvPath: meta['CV_PATH'] || null,
+    cvPdf: meta['CV_PDF'] || null,
   };
 }
 
@@ -206,30 +208,68 @@ function readCoverLetter(path) {
 }
 
 // ─────────────────────────────────────────────
-// Build MIME email message (with cover letter in body)
+// Build MIME email message with PDF attachments
 // ─────────────────────────────────────────────
-function buildMimeMessage({ to, subject, emailBody, coverLetterText, language }) {
-  const separator = language === 'FR'
-    ? '\n\n— Lettre de motivation —\n\n'
-    : language === 'DE'
-    ? '\n\n— Anschreiben —\n\n'
-    : '\n\n— Cover Letter —\n\n';
+function buildMimeMessage({ to, subject, emailBody, attachments }) {
+  // Generate a unique boundary string
+  const boundary = `----=_Part_${Date.now()}_${Math.random().toString(36).slice(2)}`;
 
-  const fullBody = coverLetterText
-    ? emailBody + separator + coverLetterText
-    : emailBody;
-
-  const message = [
+  const headers = [
     `To: ${to}`,
-    `Subject: ${subject}`,
-    'Content-Type: text/plain; charset=utf-8',
+    `Subject: ${encodeMimeWord(subject)}`,
     'MIME-Version: 1.0',
+    `Content-Type: multipart/mixed; boundary="${boundary}"`,
     '',
-    fullBody,
-  ].join('\r\n');
+  ];
 
-  // Base64url encode
+  const parts = [];
+
+  // Body part
+  parts.push([
+    `--${boundary}`,
+    'Content-Type: text/plain; charset=utf-8',
+    'Content-Transfer-Encoding: 7bit',
+    '',
+    emailBody,
+    '',
+  ].join('\r\n'));
+
+  // Attachment parts
+  for (const att of attachments) {
+    if (!att.path || !existsSync(att.path)) {
+      console.log(`     ⚠️  attachment not found: ${att.path}`);
+      continue;
+    }
+    const pdfBytes = readFileSync(att.path);
+    const b64 = pdfBytes.toString('base64');
+    // Split base64 into 76-char lines (RFC 2045)
+    const b64Lines = b64.match(/.{1,76}/g).join('\r\n');
+
+    parts.push([
+      `--${boundary}`,
+      `Content-Type: application/pdf; name="${att.filename}"`,
+      'Content-Transfer-Encoding: base64',
+      `Content-Disposition: attachment; filename="${att.filename}"`,
+      '',
+      b64Lines,
+      '',
+    ].join('\r\n'));
+  }
+
+  // Closing boundary
+  parts.push(`--${boundary}--`);
+
+  const message = headers.join('\r\n') + parts.join('\r\n');
+
+  // Base64url encode for Gmail API
   return Buffer.from(message).toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+
+// Encode subject line for non-ASCII characters (UTF-8 → MIME encoded-word)
+function encodeMimeWord(text) {
+  if (!text) return '';
+  if (/^[\x00-\x7F]*$/.test(text)) return text; // pure ASCII, no encoding needed
+  return '=?UTF-8?B?' + Buffer.from(text, 'utf-8').toString('base64') + '?=';
 }
 
 // ─────────────────────────────────────────────
@@ -309,19 +349,42 @@ async function main() {
       continue;
     }
 
-    const coverLetterText = readCoverLetter(parsed.coverLetterPath);
+    // Build attachments list: cover letter PDF + CV PDF
+    const attachments = [];
+    if (parsed.coverLetterPdf) {
+      const coverPath = join(PROJECT_DIR, parsed.coverLetterPdf);
+      attachments.push({
+        path: coverPath,
+        filename: parsed.language === 'DE'
+          ? `Anschreiben_Aimene_Djebaili.pdf`
+          : `Cover_Letter_Aimene_Djebaili.pdf`,
+      });
+    }
+    if (parsed.cvPdf) {
+      const cvPath = join(PROJECT_DIR, parsed.cvPdf);
+      attachments.push({
+        path: cvPath,
+        filename: `CV_Aimene_Djebaili.pdf`,
+      });
+    } else if (parsed.cvPath) {
+      // Legacy: CV_PATH (text), use the configured PDF
+      const cvPath = join(PROJECT_DIR, 'output', 'cv-updated.pdf');
+      if (existsSync(cvPath)) {
+        attachments.push({ path: cvPath, filename: `CV_Aimene_Djebaili.pdf` });
+      }
+    }
+
     const mimeRaw = buildMimeMessage({
       to: parsed.to,
       subject: parsed.subject,
       emailBody: parsed.body,
-      coverLetterText,
-      language: parsed.language,
+      attachments,
     });
 
     console.log(`📧  ${parsed.company} — ${parsed.role}`);
     console.log(`    To: ${parsed.to} ${parsed.emailVerified !== 'yes' ? '(⚠️ unverified)' : '(✅ verified)'}`);
     console.log(`    Subject: ${parsed.subject}`);
-    console.log(`    Score: ${parsed.score}/5 | Cover letter: ${coverLetterText ? 'included' : 'not found'}`);
+    console.log(`    Score: ${parsed.score}/5 | Attachments: ${attachments.length} PDF${attachments.length !== 1 ? 's' : ''}`);
 
     if (IS_DRY_RUN) {
       console.log(`    [DRY RUN] Would save as Gmail draft\n`);
