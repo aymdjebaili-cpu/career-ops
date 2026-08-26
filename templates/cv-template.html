@@ -72,6 +72,25 @@
   /* === HEADER === */
   .header {
     margin-bottom: 20px;
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+  }
+
+  .header-text {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .header-photo {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    object-fit: cover;
+    flex-shrink: 0;
+    border: 2px solid #fff;
+    box-shadow: 0 0 0 1px #eee;
   }
 
   .header h1 {
@@ -354,19 +373,22 @@
 
   <!-- HEADER -->
   <div class="header avoid-break">
-    <h1>{{NAME}}</h1>
-    <div class="header-gradient"></div>
-    <div class="contact-row">
-      <span>{{PHONE}}</span>
-      <span class="separator">|</span>
-      <span>{{EMAIL}}</span>
-      <span class="separator">|</span>
-      <a href="{{LINKEDIN_URL}}">{{LINKEDIN_DISPLAY}}</a>
-      <span class="separator">|</span>
-      <a href="{{PORTFOLIO_URL}}">{{PORTFOLIO_DISPLAY}}</a>
-      <span class="separator">|</span>
-      <span>{{LOCATION}}</span>
+    <div class="header-text">
+      <h1>{{NAME}}</h1>
+      <div class="header-gradient"></div>
+      <div class="contact-row">
+        <span>{{PHONE}}</span>
+        <span class="separator">|</span>
+        <span>{{EMAIL}}</span>
+        <span class="separator">|</span>
+        <a href="{{LINKEDIN_URL}}">{{LINKEDIN_DISPLAY}}</a>
+        <span class="separator">|</span>
+        <a href="{{PORTFOLIO_URL}}">{{PORTFOLIO_DISPLAY}}</a>
+        <span class="separator">|</span>
+        <span>{{LOCATION}}</span>
+      </div>
     </div>
+    {{PHOTO_IMG}}
   </div>
 
   <!-- PROFESSIONAL SUMMARY -->

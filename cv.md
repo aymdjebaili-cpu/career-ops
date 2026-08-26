@@ -1,7 +1,7 @@
 # AIMENE DJEBAILI
 **Finance and Digital Economics – Hospitality Technology and Operations**
 
-Berlin, Germany | Aym.djebaili@gmail.com | [linkedin.com/in/aimene-djebaili-b064141b8](https://linkedin.com/in/aimene-djebaili-b064141b8)
+Frankfurt, Germany | Aym.djebaili@gmail.com | [linkedin.com/in/aimene-djebaili-b064141b8](https://linkedin.com/in/aimene-djebaili-b064141b8)
 
 *EU Blue Card eligible.*
 
@@ -19,7 +19,7 @@ Finance and Digital Economics graduate with specialized expertise in tourism and
 **Algeria and Tunisia | December 2024 – Present**
 
 - Managed end-to-end B2C booking operations for tourism providers, from lead qualification to booking confirmation. Converted **345** verified bookings from **1,271** saved leads, generating a total booking value of **31,195,472 DZD** (~205,342 EUR) in the tourism sector.
-- Led B2B revenue recovery for travel agencies and hotels, recovering **242,241,373 DZD** (~1,594,539 EUR) through structured financial follow-ups and negotiations with over **100** tourism partners.
+- Led B2B revenue recovery for travel agencies and hotels, recovering **242,241,373 DZD** (~1,594,539 EUR) through structured financial follow-ups and negotiations with over **100** tourism partners — a network that includes Algerian agencies specialised in Sahara and cultural-heritage tourism.
 - Oversaw customer service, booking validation, marketing administration, design coordination, and communications for tourism clients.
 - Recruited, interviewed, and managed a team of four specialists in hospitality operations. Optimized internal processes, reduced costs, and developed deep expertise in OTA workflows and booking systems within the Algerian tourism market.
 

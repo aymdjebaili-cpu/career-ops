@@ -77,6 +77,7 @@ Usar el template en `cv-template.html`. Reemplazar los placeholders `{{...}}` co
 | `{{PORTFOLIO_URL}}` | [from profile.yml] (o /es según idioma) |
 | `{{PORTFOLIO_DISPLAY}}` | [from profile.yml] (o /es según idioma) |
 | `{{LOCATION}}` | [from profile.yml] |
+| `{{PHOTO_IMG}}` | If `assets/photo.jpg` (or `.png`) exists: `<img class="header-photo" src="./assets/photo.jpg" alt="{{NAME}}">`. If it doesn't exist: empty string (omit the tag entirely — no broken image icon). |
 | `{{SECTION_SUMMARY}}` | Professional Summary / Resumen Profesional |
 | `{{SUMMARY_TEXT}}` | Summary personalizado con keywords |
 | `{{SECTION_COMPETENCIES}}` | Core Competencies / Competencias Core |

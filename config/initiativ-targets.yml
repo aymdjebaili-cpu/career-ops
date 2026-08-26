@@ -1,0 +1,340 @@
+# Initiativbewerbung targets — German travel agencies & tour operators
+#
+# Companion to output/travel-agencies-germany.md (the research doc) and the
+# "Algeria angle" section of modes/_profile.md (the pitch itself).
+#
+# WHY THIS FILE EXISTS SEPARATELY FROM portals.yml
+# portals.yml drives scan.mjs, which only speaks Greenhouse/Ashby/Lever and
+# therefore skips every company below. This file drives initiativ-drafts.mjs,
+# which does not need a job posting at all — the whole point of a speculative
+# application is that no posted JD asks for "opens the Algerian market".
+#
+# THE `email` FIELD IS THE GATE
+#   verified: true   → initiativ-drafts.mjs writes output/email-init-{slug}.md,
+#                      which `npm run drafts` then pushes to Gmail as a draft.
+#   verified: false  → letter is still generated, but NO email file is written.
+#                      Use the careers_url / contact form by hand, or research a
+#                      real address and flip the flag.
+#
+# VERIFY THE GAP BEFORE CLAIMING IT (added 2026-08-17, the hard way)
+# Every letter argues "you sell Morocco/Tunisia/Egypt but not Algeria". Hauser
+# Exkursionen replied: "Ich vermute, diese ist versehentlich zu uns gelangt, da
+# Sie ja sicher gesehen haben, dass wir schon sehr intensiv mit Algerien
+# arbeiten. Wir haben enge Kontakte vor Ort und auch Algerien Kenner intern."
+# They already run Algeria, with local contacts and in-house specialists — so the
+# letter's central claim was false, and a polite reply was the best possible
+# outcome. Before generating any letter, CHECK that operator's own destination
+# list for Algerien/Algeria. If they already sell it, either drop the target or
+# rewrite the angle to capacity ("you sell it, I can scale it") — never assert an
+# absence you have not confirmed. An unverified gap claim reads as an applicant
+# who did not look at the website.
+#
+# Do NOT fill `email` with a guessed karriere@/jobs@ address. For a cold
+# speculative pitch a guessed inbox is worse than the company's own contact
+# form: it bounces, or lands somewhere nobody reads, and burns the one shot.
+
+candidate_note: |
+  Letters are written in German (user decision, 2026-08-08). The A2 German level
+  is deliberately NOT mentioned in the letter body — if a reply arrives in fluent
+  German, answer it yourself rather than through the pipeline.
+
+targets:
+
+  # ── VERIFIED ADDRESS — draft-ready ────────────────────────────────────────
+
+  # OUTCOME 2026-08-16: rejected — no vacancy at present, not a fit judgement.
+  # HR keeps the file 6 months, so a targeted application against a real posting
+  # inside that window lands on a desk that has already seen the profile.
+  - slug: studiosus-marco-polo
+    company: "Studiosus Reisen / Marco Polo Reisen"
+    base: "München"
+    priority: 1
+    status: rejected-no-vacancy
+    outcome_note: >-
+      2026-08-16 — Helena Matheis (HR): "derzeit keine vakante Position".
+      Data retained 6 months. Re-apply to a posted role before 2027-02-16.
+    email: "jobs@studiosus.com"
+    verified: true
+    email_source: >-
+      published on marco-polo-reisen.com/jobs as the group's application address
+      (re-confirmed 2026-08-15). Note it is NOT on studiosus.com/jobs, which only
+      carries servicemail@ — point any re-check at the Marco Polo page.
+    careers_url: "https://www.marco-polo-reisen.com/jobs"
+    # ONE letter, not two. Marco Polo Reisen belongs to the Studiosus group and
+    # both route to the same inbox — two separate speculative letters landing in
+    # one HR mailbox on the same day reads as spam, not as initiative.
+    notes: >-
+      Europe's largest Studienreisen operator plus its adventure/small-group
+      sister brand. The only target in this list that publicly invites
+      Initiativbewerbung. Cultural and archaeological travel is exactly what
+      Algeria sells: Timgad, Djémila, Tipaza, the Casbah of Algiers.
+    angle: >-
+      Studienreisen and small-group cultural travel — seven UNESCO World Heritage
+      sites in Algeria, none of them currently in the programme.
+    target_roles:
+      - "Produktmanagement Touristik"
+      - "Zielgebietsmanagement Nordafrika"
+      - "Einkauf / Hotel Contracting"
+
+  # ── NO VERIFIED ADDRESS — letter generated, send by hand ──────────────────
+  #
+  # All 12 careers pages were read on 2026-08-12. Five published a real address
+  # and moved up into the verified set above. The rest publish NO address at all
+  # and route everything through an application portal:
+  #   chamaeleon-reisen  → Personio (chamaeleon.jobs.personio.de), has an
+  #                        explicit Initiativbewerbung entry in the portal
+  #   diamir             → per-posting portal links only
+  #   berge-und-meer     → portal; careers page lists HR phone numbers, no email
+  #   der-touristik      → dertour-jobs.com portal (careers URL now redirects there)
+  #   tui-group          → careers.tuigroup.com portal
+  #   alltours           → jobs.alltours.de portal
+  #   schauinsland       → portal, with its own Initiativbewerbung form
+  # For these the letter PDF is the deliverable; paste it into the portal by hand.
+  # Do not invent bewerbung@ addresses for them — see the header note.
+
+  - slug: ikarus-tours
+    company: "Ikarus Tours"
+    base: "Königstein im Taunus"
+    priority: 2
+    email: "bewerbung@ikarus.com"
+    verified: true
+    email_source: >-
+      published on ikarus.com/stellenangebote, which explicitly invites
+      Initiativbewerbung at this address when no vacancy is posted (checked 2026-08-12)
+    careers_url: "https://www.ikarus.com/stellenangebote"
+    # CORRECTED 2026-08-17. Ikarus ALREADY SELLS ALGERIA — three live product
+    # pages: /rundreisen-reiseziel-algerien ("Algerien Rundreisen mit Ihrem
+    # Reisespezialisten erleben"), /hoehepunkte-algeriens and
+    # /faszinierende-wueste-sued-algeriens. The original gap angle below was the
+    # same false premise that Hauser rejected. Angle rewritten to capacity.
+    algeria_in_programme: true
+    notes: >-
+      Long-haul and desert specialist that already runs Algeria as a destination.
+      Do NOT pitch a market gap here. The opening is operational depth on an
+      existing programme: ground handling, agency relationships and visa/prise en
+      charge processing are the fragile parts of selling Algeria, and that is
+      exactly the candidate's hands-on experience.
+    angle: >-
+      Algeria is already in the programme — the argument is capacity, not
+      absence: 100+ live agency and hotel relationships on the ground, plus
+      first-hand visa and prise-en-charge handling, make an existing Sahara and
+      cultural programme easier to scale and less dependent on single suppliers.
+    target_roles:
+      - "Produktmanagement"
+      - "Zielgebietsmanagement"
+
+  # OUTCOME 2026-08-16: rejected. HR replied that Hauser already works
+  # "sehr intensiv mit Algerien", holds close local contacts and employs Algeria
+  # specialists in-house. Do not re-pitch the market-gap angle here. If revisited,
+  # the only honest opening is capacity/scale on an existing programme, and only
+  # against a real posted vacancy.
+  - slug: hauser-exkursionen
+    company: "Hauser Exkursionen"
+    base: "München"
+    priority: 3
+    status: rejected
+    outcome_note: >-
+      2026-08-16 — Anja Schillinger (Leitung Personal): already operating Algeria
+      with local contacts and internal Algeria expertise. Gap premise was wrong.
+    email: "personal@hauser-exkursionen.de"
+    verified: true
+    email_source: >-
+      published on hauser-exkursionen.de jobs page: "Bitte senden Sie Ihre
+      Unterlagen ausschließlich in digitaler Form an ..." (checked 2026-08-12)
+    careers_url: "https://www.hauser-exkursionen.de/ueber-uns/jobs"
+    notes: >-
+      Trekking and desert expedition specialist. The Sahara is core product
+      territory, not a side destination.
+    angle: >-
+      Trekking and expedition travel — licensed Algerian desert guides, 4x4
+      logistics and Saharan camps already serve French groups.
+    target_roles:
+      - "Produktmanagement Trekking"
+      - "Einkauf / Agenturbetreuung"
+
+  - slug: chamaeleon-reisen
+    company: "Chamäleon Reisen"
+    base: "Berlin"
+    priority: 4
+    email: null
+    verified: false
+    careers_url: "https://www.chamaeleon-reisen.de/Jobs"
+    notes: >-
+      ~120 staff, 70 countries, sustainable small-group travel. CAVEAT: advertises
+      "sehr gute Deutschkenntnisse" on customer-facing roles — the letter must aim
+      at product/destination management, never Reiseberatung.
+    angle: >-
+      Sustainable small-group travel — community-based Saharan tourism with
+      licensed local agencies rather than mass-market coach programmes.
+    target_roles:
+      - "Produktmanagement"
+      - "Zielgebietsmanagement"
+
+  - slug: diamir-erlebnisreisen
+    company: "Diamir Erlebnisreisen"
+    base: "Dresden"
+    priority: 5
+    email: null
+    verified: false
+    careers_url: "https://www.diamir.de/jobs"
+    notes: >-
+      Expedition operator with an existing Africa programme — Algeria is the
+      adjacent gap rather than a new continent.
+    angle: >-
+      An existing Africa programme with a hole in it: Morocco, Tunisia and Egypt
+      are sold, Algeria is not.
+    target_roles:
+      - "Produktmanagement"
+      - "Einkauf"
+
+  - slug: lernidee-erlebnisreisen
+    company: "Lernidee Erlebnisreisen"
+    base: "Berlin"
+    priority: 6
+    email: "bewerbung@lernidee.de"
+    verified: true
+    email_source: >-
+      published on lernidee.de/jobs, directly under "Keine passende Stelle
+      gefunden? Wir freuen uns auf Ihre Unterlagen (bevorzugt in einer PDF-Datei)
+      an bewerbung@lernidee.de" — i.e. the page invites exactly this speculative
+      application (re-checked 2026-08-15). Supersedes the generic team@ inbox
+      used until 2026-08-15, which was the contact address, not the HR one.
+    careers_url: "https://www.lernidee.de/jobs"
+    notes: >-
+      Builds unusual itineraries in unexpected destinations — the exact
+      positioning an Algeria programme needs.
+    angle: >-
+      Unusual destinations as the core brand promise — Algeria is Africa's
+      largest country and almost entirely unlisted in the German market.
+    target_roles:
+      - "Produktmanagement"
+      - "Zielgebietsmanagement"
+
+  - slug: gebeco
+    company: "Gebeco"
+    base: "Kiel"
+    priority: 7
+    email: "personal@gebeco.de"
+    verified: true
+    email_source: >-
+      published on gebeco.de/karriere under "Deine Ansprechpartner" as the HR
+      address for questions about applying (checked 2026-08-12)
+    careers_url: "https://www.gebeco.de/karriere"
+    notes: >-
+      Study and experience travel with long-standing North Africa programmes.
+    angle: >-
+      Established North Africa programmes that stop at the Tunisian border.
+    target_roles:
+      - "Produktmanagement Touristik"
+      - "Zielgebietsmanagement"
+
+  - slug: wikinger-reisen
+    company: "Wikinger Reisen"
+    base: "Hagen"
+    priority: 8
+    email: "jobs@wikinger.de"
+    verified: true
+    email_source: >-
+      published on wikinger-reisen.de jobs page as the address to send a CV to
+      (checked 2026-08-12)
+    careers_url: "https://www.wikinger-reisen.de/ueberuns/jobs.php"
+    notes: >-
+      Hiking and active travel. Aim strictly at office roles — this employer also
+      advertises Ausbildung and Reiseleitung, neither of which qualifies
+      (see feedback-full-time-only).
+    angle: >-
+      Hiking and active travel — Saharan trekking with established local ground
+      handlers.
+    target_roles:
+      - "Produktmanagement"
+      - "Einkauf"
+
+  - slug: der-touristik
+    company: "DER Touristik"
+    base: "Frankfurt / Köln"
+    priority: 9
+    email: null
+    verified: false
+    careers_url: "https://www.dertouristik.com/de/karriere"
+    notes: >-
+      REWE Group (Dertour, ITS, Jahn Reisen, Meiers Weltreisen). Frankfurt base
+      matches the candidate's location. Large enough to have English-language
+      roles.
+    angle: >-
+      Multi-brand portfolio with heavy North Africa volume — an Algeria desk
+      scales across Dertour, ITS and Meiers Weltreisen at once.
+    target_roles:
+      - "Produktmanagement Touristik"
+      - "Hotel Contracting"
+      - "B2B Partner Operations"
+
+  - slug: tui-group
+    company: "TUI Group"
+    base: "Hannover"
+    priority: 10
+    email: null
+    verified: false
+    careers_url: "https://careers.tuigroup.com"
+    notes: >-
+      ~90+ open German roles at any time and full-time graduate Trainee
+      programmes. Large-company English-language roles are realistic at A2 German.
+      Prefer applying to posted roles here over a speculative letter.
+    angle: >-
+      Europe's largest tour operator with the contracting muscle to open a
+      destination quickly once someone can process it.
+    target_roles:
+      - "Graduate Trainee Programme"
+      - "Product Management"
+      - "Hotel Contracting"
+
+  - slug: berge-und-meer
+    company: "Berge & Meer Touristik"
+    base: "Rengsdorf"
+    priority: 11
+    email: null
+    verified: false
+    careers_url: "https://www.berge-meer.de/karriere"
+    notes: >-
+      Already surfaced a live "Junior Produktmanager Einkauf Fernreisen (m/w/d)",
+      Vollzeit + unbefristet, via the Bundesagentur scanner. If that posting is
+      still open, apply to it directly instead of sending a speculative letter.
+    angle: >-
+      Fernreisen purchasing — a buyer who already ran bedbank contracting with
+      100+ North African partners.
+    target_roles:
+      - "Junior Produktmanager Einkauf Fernreisen"
+
+  - slug: alltours
+    company: "Alltours"
+    base: "Düsseldorf"
+    priority: 12
+    email: null
+    verified: false
+    careers_url: "https://jobs.alltours.de/"
+    notes: >-
+      Hires Hoteleinkauf (hotel buyers) — maps directly onto bedbank contracting
+      experience at iPro Booking.
+    angle: >-
+      Hotel purchasing — rate negotiation, allotments and receivables with North
+      African properties.
+    target_roles:
+      - "Hoteleinkauf"
+      - "Produktmanagement"
+
+  - slug: schauinsland-reisen
+    company: "Schauinsland-Reisen"
+    base: "Duisburg"
+    priority: 13
+    email: null
+    verified: false
+    careers_url: "https://karriere.schauinsland-reisen.de/jobs"
+    notes: >-
+      Mid-size package operator running its own job portal.
+    angle: >-
+      Package operator with North African volume and no Algeria product.
+    target_roles:
+      - "Produktmanagement"
+      - "Einkauf"
+
+# Deliberately excluded: FTI Touristik — the FTI Group filed for insolvency in
+# June 2024 and ceased operations. Do not re-add.

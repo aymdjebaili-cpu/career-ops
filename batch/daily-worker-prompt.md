@@ -26,7 +26,7 @@ If SKIPped → go to Step 6 (write SKIP), output `REPORT_PATH=none`, STOP.
 
 ### Step 2 — JD Content Ready
 
-The JD content is provided in the prompt (already fetched). No need to fetch.
+Read `batch/.job-context.md` — it contains the URL, company, role, and the pre-fetched JD content. Do NOT fetch the URL yourself. If the file says the fetch failed, pre-screen on title/company only and SKIP when in doubt.
 
 ### Step 3 — Location & Experience Check
 
@@ -49,7 +49,17 @@ Apply `modes/oferta.md` to produce blocks A-G:
 
 ### Step 5 — Persist Report
 
-Find next sequential 3-digit report number (max existing + 1 in `reports/`).
+**Report number — do NOT eyeball this.** `reports/` holds hundreds of files, and a truncated
+directory listing has repeatedly produced collisions (30+ distinct reports were all written as
+`247-...`, which breaks the tracker links and drops rows from the applications index).
+
+Get the number by running this command and using its output verbatim:
+
+```bash
+node -e "import('fs').then(({readdirSync})=>{const n=readdirSync('reports').map(f=>+(f.match(/^(\d{3})-/)||[])[1]).filter(Number.isFinite);console.log(String(Math.max(0,...n)+1).padStart(3,'0'))})"
+```
+
+If that command fails for any reason, SKIP the job rather than guessing a number.
 
 Write report to: `reports/{NNN}-{company-slug}-{YYYY-MM-DD}.md`
 

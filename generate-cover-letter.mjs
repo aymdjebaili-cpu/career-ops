@@ -21,10 +21,11 @@
  *   --cli=NAME   Override CLI (default: claude). Supports: claude, codex, gemini, opencode, qwen, copilot
  */
 
-import { readFileSync, existsSync, mkdirSync, readdirSync } from 'fs';
+import { readFileSync, writeFileSync, existsSync, mkdirSync, readdirSync } from 'fs';
 import { join, dirname, basename } from 'path';
 import { fileURLToPath } from 'url';
 import { spawnSync } from 'child_process';
+import { languageSlug } from './email-body-core.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PROJECT_DIR = __dirname;
@@ -121,7 +122,9 @@ function main() {
   const reportPath = resolveReportPath();
   const meta = parseReportHeader(reportPath);
   const slug = slugify(meta.company);
-  const outFile = join(OUTPUT_DIR, `${meta.num}-${slug}-${meta.language.toLowerCase()}.md`);
+  // languageSlug keeps a report that says `EN/DE` from turning the slash into a
+  // directory — daily-run.mjs resolves the same path and must agree exactly.
+  const outFile = join(OUTPUT_DIR, `${meta.num}-${slug}-${languageSlug(meta.language)}.md`);
 
   console.log(`📝 Cover letter target: ${meta.num} | ${meta.company} | ${meta.role} | score ${meta.score}/5 | lang ${meta.language}`);
   console.log(`   Report:  ${reportPath}`);
@@ -141,34 +144,57 @@ function main() {
     return;
   }
 
-  // Build prompt for the headless CLI
-  const prompt = [
-    `You are running in headless mode. Load and follow modes/cover-letter.md strictly.`,
-    ``,
-    `Generate a tailored cover letter for this evaluated job:`,
-    `  Report:   ${reportPath}`,
-    `  Company:  ${meta.company}`,
-    `  Role:     ${meta.role}`,
-    `  Language: ${meta.language}`,
-    `  Score:    ${meta.score}/5`,
-    ``,
-    `Write the cover letter EXACTLY to this path:`,
-    `  ${outFile}`,
-    ``,
-    `Use cv.md, config/profile.yml, modes/_profile.md, and the report above.`,
-    `Enforce all quality gates from modes/cover-letter.md (word count 350-450, 2+ quantified proof points, company named ≥2 times, Blue Card + 2026 relocation in §4).`,
-    `When done, print exactly: COVER_LETTER_PATH=${outFile}`,
-  ].join('\n');
+  let res;
+  if (CLI === 'claude') {
+    // Proven headless pattern (see batch/daily-worker-prompt.md): instructions in a
+    // system prompt file + short user message. A long inline prompt lets CLAUDE.md
+    // onboarding hijack the response ("How can I help you today?") and nothing gets written.
+    const contextFile = join(PROJECT_DIR, 'batch', '.cover-letter-context.md');
+    writeFileSync(contextFile, [
+      `REPORT: ${reportPath}`,
+      `COMPANY: ${meta.company}`,
+      `ROLE: ${meta.role}`,
+      `LANGUAGE: ${meta.language}`,
+      `SCORE: ${meta.score}/5`,
+      `OUTPUT_PATH: ${outFile}`,
+      '',
+    ].join('\n'), 'utf8');
 
-  const cliFlag = CLI === 'codex' ? 'exec' : (CLI === 'opencode' ? 'run' : '-p');
-
-  console.log(`   → invoking: ${CLI} ${cliFlag} --model ${MODEL} "<prompt>"  (cwd=${PROJECT_DIR})`);
-
-  const res = spawnSync(CLI, [cliFlag, '--model', MODEL, prompt], {
-    cwd: PROJECT_DIR,
-    stdio: 'inherit',
-    shell: true,
-  });
+    console.log(`   → invoking: claude -p --append-system-prompt-file batch/cover-letter-worker-prompt.md --model ${MODEL}  (cwd=${PROJECT_DIR})`);
+    res = spawnSync(CLI, [
+      '-p',
+      '--dangerously-skip-permissions',
+      '--append-system-prompt-file', 'batch/cover-letter-worker-prompt.md',
+      '--model', MODEL,
+      '"Generate the cover letter described in batch/.cover-letter-context.md. Follow your system instructions exactly. Output only the COVER_LETTER_PATH line."',
+    ], { cwd: PROJECT_DIR, stdio: 'inherit', shell: true, timeout: 420_000 });
+  } else {
+    // Other CLIs: keep the inline-prompt path
+    const prompt = [
+      `You are running in headless mode. Load and follow modes/cover-letter.md strictly.`,
+      ``,
+      `Generate a tailored cover letter for this evaluated job:`,
+      `  Report:   ${reportPath}`,
+      `  Company:  ${meta.company}`,
+      `  Role:     ${meta.role}`,
+      `  Language: ${meta.language}`,
+      `  Score:    ${meta.score}/5`,
+      ``,
+      `Write the cover letter EXACTLY to this path:`,
+      `  ${outFile}`,
+      ``,
+      `Use cv.md, config/profile.yml, modes/_profile.md, and the report above.`,
+      `Enforce all quality gates from modes/cover-letter.md (word count 350-450, 2+ quantified proof points, company named ≥2 times, Blue Card + 2026 relocation in §4).`,
+      `When done, print exactly: COVER_LETTER_PATH=${outFile}`,
+    ].join('\n');
+    const cliFlag = CLI === 'codex' ? 'exec' : (CLI === 'opencode' ? 'run' : '-p');
+    console.log(`   → invoking: ${CLI} ${cliFlag} --model ${MODEL} "<prompt>"  (cwd=${PROJECT_DIR})`);
+    res = spawnSync(CLI, [cliFlag, '--model', MODEL, prompt], {
+      cwd: PROJECT_DIR,
+      stdio: 'inherit',
+      shell: true,
+    });
+  }
 
   if (res.status !== 0) {
     console.error(`   ❌  ${CLI} exited with status ${res.status}`);

@@ -13,9 +13,15 @@
  *   --dry-run     Show what would be saved without creating drafts
  *   --score N     Only save drafts for jobs scored >= N (default: 3.5)
  *   --folder DIR  Folder to scan for email files (default: output/)
+ *   --no-update   Leave drafts already in Gmail alone, even if the file changed
+ *
+ * A draft whose source file has changed is UPDATED IN PLACE (same draft id), not
+ * duplicated and not skipped. Without this, rebuild-email-bodies.mjs could fix a
+ * body on disk and the stub would sit in Gmail forever — the log said "done".
  */
 
 import { readFileSync, writeFileSync, existsSync, readdirSync } from 'fs';
+import { createHash } from 'crypto';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { createServer } from 'http';
@@ -34,12 +40,19 @@ const OUTPUT_DIR = join(PROJECT_DIR, 'output');
 const args = process.argv.slice(2);
 const IS_SETUP = args.includes('--setup');
 const IS_DRY_RUN = args.includes('--dry-run');
+const NO_UPDATE = args.includes('--no-update');
 const SCORE_THRESHOLD = parseFloat(args.find(a => a.startsWith('--score='))?.split('=')[1] ?? '3.5');
 
 // ─────────────────────────────────────────────
 // Gmail API scope
 // ─────────────────────────────────────────────
 const SCOPES = ['https://www.googleapis.com/auth/gmail.compose'];
+
+// Bump when buildMimeMessage changes shape. It is mixed into each draft's
+// fingerprint, so a builder fix re-pushes every draft even though no source file
+// changed — otherwise drafts written by a broken builder stay broken forever,
+// because the log says they match. v2 = the empty-body MIME fix.
+const MIME_BUILDER_VERSION = 'v2';
 
 // ─────────────────────────────────────────────
 // Lazy-load googleapis (install check)
@@ -78,7 +91,7 @@ async function runSetup() {
   const credentials = JSON.parse(readFileSync(CREDENTIALS_FILE, 'utf8'));
   const { client_secret, client_id, redirect_uris } = credentials.installed || credentials.web;
 
-  const oAuth2Client = new google.auth.OAuth2(client_id, client_secret, 'http://localhost:3000/callback');
+  const oAuth2Client = new google.auth.OAuth2(client_id, client_secret, 'http://localhost:53682/callback');
 
   const authUrl = oAuth2Client.generateAuthUrl({
     access_type: 'offline',
@@ -98,7 +111,7 @@ async function runSetup() {
   // Local server to capture the OAuth callback
   await new Promise((resolve, reject) => {
     const server = createServer(async (req, res) => {
-      const url = new URL(req.url, 'http://localhost:3000');
+      const url = new URL(req.url, 'http://localhost:53682');
       const code = url.searchParams.get('code');
 
       if (!code) {
@@ -122,8 +135,8 @@ async function runSetup() {
       }
     });
 
-    server.listen(3000, () => {
-      console.log('Waiting for authorization callback on http://localhost:3000 ...\n');
+    server.listen(53682, () => {
+      console.log('Waiting for authorization callback on http://localhost:53682 ...\n');
     });
 
     server.on('error', reject);
@@ -149,7 +162,7 @@ async function getGmailClient() {
 
   const credentials = JSON.parse(readFileSync(CREDENTIALS_FILE, 'utf8'));
   const { client_secret, client_id } = credentials.installed || credentials.web;
-  const oAuth2Client = new google.auth.OAuth2(client_id, client_secret, 'http://localhost:3000/callback');
+  const oAuth2Client = new google.auth.OAuth2(client_id, client_secret, 'http://localhost:53682/callback');
   oAuth2Client.setCredentials(JSON.parse(readFileSync(TOKEN_FILE, 'utf8')));
 
   return google.gmail({ version: 'v1', auth: oAuth2Client });
@@ -219,18 +232,31 @@ function buildMimeMessage({ to, subject, emailBody, attachments }) {
     `Subject: ${encodeMimeWord(subject)}`,
     'MIME-Version: 1.0',
     `Content-Type: multipart/mixed; boundary="${boundary}"`,
-    '',
   ];
 
   const parts = [];
 
-  // Body part
+  // Body part.
+  //
+  // TWO BUGS LIVED HERE, and together they silently deleted the message text —
+  // Gmail accepted every draft, attached both PDFs, and showed an empty body:
+  //
+  //   1. The header block was terminated by ONE CRLF before the first boundary
+  //      instead of a blank line (CRLF CRLF). RFC 5322 ends headers at the first
+  //      empty line, so Gmail kept parsing `--boundary` and the part headers as
+  //      message headers and the real body was consumed as header junk.
+  //   2. `Content-Transfer-Encoding: 7bit` was declared over UTF-8 text. These
+  //      letters are full of 8-bit bytes — ä, ü, €, —, é — so the declaration was
+  //      a lie even once the framing was right.
+  //
+  // Body is base64 now: legal for any byte, and immune to line-length limits.
+  const bodyB64 = Buffer.from(emailBody ?? '', 'utf8').toString('base64');
   parts.push([
     `--${boundary}`,
-    'Content-Type: text/plain; charset=utf-8',
-    'Content-Transfer-Encoding: 7bit',
+    'Content-Type: text/plain; charset="UTF-8"',
+    'Content-Transfer-Encoding: base64',
     '',
-    emailBody,
+    (bodyB64.match(/.{1,76}/g) ?? []).join('\r\n'),
     '',
   ].join('\r\n'));
 
@@ -259,10 +285,33 @@ function buildMimeMessage({ to, subject, emailBody, attachments }) {
   // Closing boundary
   parts.push(`--${boundary}--`);
 
-  const message = headers.join('\r\n') + parts.join('\r\n');
+  // The '\r\n\r\n' is the header/body separator that was missing.
+  const message = headers.join('\r\n') + '\r\n\r\n' + parts.join('\r\n');
 
   // Base64url encode for Gmail API
   return Buffer.from(message).toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+
+/**
+ * Read the draft back out of Gmail and confirm the text part survived.
+ *
+ * The MIME framing bug above was invisible from this side: create() returned a
+ * draft id, the log said "saved", and the body was gone. An application mail with
+ * no text is worse than none at all, so every write is now verified against what
+ * Gmail actually stored rather than against what we hoped we sent.
+ */
+async function verifyDraftBody(gmail, draftId, expectedChars) {
+  const res = await gmail.users.drafts.get({ userId: 'me', id: draftId, format: 'full' });
+  let found = 0;
+  const walk = (part) => {
+    if (part.mimeType === 'text/plain' && part.body?.data) {
+      found = Math.max(found, Buffer.from(part.body.data, 'base64').toString('utf8').trim().length);
+    }
+    (part.parts ?? []).forEach(walk);
+  };
+  walk(res.data.message.payload);
+  // Encoding can shift the count a little; anything near the source is fine.
+  return { ok: found >= Math.min(50, expectedChars * 0.5), found };
 }
 
 // Encode subject line for non-ASCII characters (UTF-8 → MIME encoded-word)
@@ -315,12 +364,21 @@ async function main() {
 
   let saved = 0, skipped = 0, alreadyDone = 0, errors = 0;
 
+  let updated = 0;
+
   for (const filePath of emailFiles) {
     const fileName = filePath.split(/[\\/]/).pop();
+    const prior = draftLog[fileName];
 
-    // Skip already-saved drafts
-    if (draftLog[fileName]) {
-      console.log(`⏭️   ${fileName} — already saved (Gmail draft ID: ${draftLog[fileName].draftId})`);
+    // Content fingerprint decides skip vs. update. Older log entries predate the
+    // hash, so treat a missing one as "unknown" and refresh the draft once.
+    const fingerprint = createHash('sha256')
+      .update(MIME_BUILDER_VERSION)
+      .update(readFileSync(filePath))
+      .digest('hex').slice(0, 16);
+
+    if (prior && (prior.fingerprint === fingerprint || NO_UPDATE)) {
+      console.log(`⏭️   ${fileName} — already saved (Gmail draft ID: ${prior.draftId})`);
       alreadyDone++;
       continue;
     }
@@ -345,6 +403,20 @@ async function main() {
     if (!parsed.to || parsed.to.includes('[') || parsed.to.includes('placeholder')) {
       console.log(`⚠️   ${fileName} — no verified email address. Add recipient manually.`);
       console.log(`    Company: ${parsed.company} | Role: ${parsed.role}`);
+      skipped++;
+      continue;
+    }
+
+    // Provenance gate. daily-run.mjs no longer invents addresses, but drafts
+    // written before that change are still on disk and they record their own
+    // origin honestly: `EMAIL_VERIFIED: guessed, unverified (...)`. Pushing one
+    // puts a job application in the mailbox addressed to an inbox nobody
+    // confirmed exists — and in Gmail it sits next to the verified drafts
+    // looking exactly as trustworthy. A generic careers@ guess is a bounce, not
+    // a long shot, so it never reaches the outbox.
+    if (/^(guessed|unverified|unknown|none)\b/i.test(String(parsed.emailVerified).trim())) {
+      console.log(`⏭️   ${fileName} — ${parsed.to} has no published source, not drafting.`);
+      console.log(`    ${parsed.company} | ${parsed.role} — apply through their portal instead.`);
       skipped++;
       continue;
     }
@@ -382,45 +454,75 @@ async function main() {
     });
 
     console.log(`📧  ${parsed.company} — ${parsed.role}`);
-    console.log(`    To: ${parsed.to} ${parsed.emailVerified !== 'yes' ? '(⚠️ unverified)' : '(✅ verified)'}`);
+    // EMAIL_VERIFIED holds either the literal 'yes' (initiativ targets, where the
+    // provenance sits on its own EMAIL_SOURCE line) or a sentence naming where
+    // the address was published. Only the first form used to count as verified,
+    // so every scraped-with-a-source address was labelled "⚠️ unverified" — the
+    // same warning shown for a pure guess, which makes the warning worthless.
+    const traceable = !/^(guessed|unverified|unknown|none)\b/i.test(String(parsed.emailVerified).trim());
+    console.log(`    To: ${parsed.to} ${traceable ? '(✅ verified)' : '(⚠️ unverified)'}`);
+    if (traceable && parsed.emailVerified !== 'yes') console.log(`    Source: ${parsed.emailVerified}`);
     console.log(`    Subject: ${parsed.subject}`);
     console.log(`    Score: ${parsed.score}/5 | Attachments: ${attachments.length} PDF${attachments.length !== 1 ? 's' : ''}`);
 
     if (IS_DRY_RUN) {
-      console.log(`    [DRY RUN] Would save as Gmail draft\n`);
-      saved++;
+      console.log(`    [DRY RUN] Would ${prior ? 'update existing' : 'save as'} Gmail draft\n`);
+      if (prior) updated++; else saved++;
       continue;
     }
 
     try {
-      const res = await gmail.users.drafts.create({
-        userId: 'me',
-        requestBody: { message: { raw: mimeRaw } },
-      });
+      // update() keeps the draft id, so a revised body replaces the old one
+      // instead of leaving two near-identical drafts to pick between.
+      const create = () => gmail.users.drafts.create({ userId: 'me', requestBody: { message: { raw: mimeRaw } } });
+      let res;
+      if (prior) {
+        try {
+          res = await gmail.users.drafts.update({ userId: 'me', id: prior.draftId, requestBody: { message: { raw: mimeRaw } } });
+        } catch (e) {
+          // The logged draft is gone — deleted by hand, or already sent. Recreate
+          // rather than fail: the log is our record, Gmail is the truth.
+          if (!/not a draft|not found|notFound/i.test(e.message)) throw e;
+          console.log(`    ↪ logged draft no longer exists in Gmail — creating a fresh one`);
+          res = await create();
+        }
+      } else {
+        res = await create();
+      }
 
       const draftId = res.data.id;
+
+      const check = await verifyDraftBody(gmail, draftId, parsed.body.trim().length);
+      if (!check.ok) {
+        console.error(`    ❌  Gmail stored this draft with an empty/short body (${check.found} chars) — not recording it as done\n`);
+        errors++;
+        continue;
+      }
+
       draftLog[fileName] = {
         draftId,
         company: parsed.company,
         role: parsed.role,
         to: parsed.to,
         score: parsed.score,
-        savedAt: new Date().toISOString(),
+        fingerprint,
+        savedAt: prior?.savedAt ?? new Date().toISOString(),
+        ...(prior ? { updatedAt: new Date().toISOString() } : {}),
       };
       saveDraftLog(draftLog);
 
-      console.log(`    ✅  Draft saved (ID: ${draftId})\n`);
-      saved++;
+      console.log(`    ✅  Draft ${prior ? 'updated' : 'saved'} (ID: ${draftId}, body ${check.found} chars verified in Gmail)\n`);
+      if (prior) updated++; else saved++;
     } catch (err) {
-      console.error(`    ❌  Failed to save draft: ${err.message}\n`);
+      console.error(`    ❌  Failed to ${prior ? 'update' : 'save'} draft: ${err.message}\n`);
       errors++;
     }
   }
 
   console.log('\n=== Summary ===');
-  console.log(`Saved: ${saved} | Already done: ${alreadyDone} | Skipped: ${skipped} | Errors: ${errors}`);
+  console.log(`Saved: ${saved} | Updated: ${updated} | Already done: ${alreadyDone} | Skipped: ${skipped} | Errors: ${errors}`);
 
-  if (saved > 0 && !IS_DRY_RUN) {
+  if ((saved > 0 || updated > 0) && !IS_DRY_RUN) {
     console.log('\n✅  Drafts are in your Gmail. Review, attach your CV PDF, and send when ready.');
     console.log('   Gmail → Drafts folder\n');
   }

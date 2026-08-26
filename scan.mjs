@@ -17,6 +17,7 @@
 
 import { readFileSync, writeFileSync, appendFileSync, existsSync } from 'fs';
 import yaml from 'js-yaml';
+import { namesAPlace } from './location-core.mjs';
 const parseYaml = yaml.load;
 
 // ── Config ──────────────────────────────────────────────────────────
@@ -148,11 +149,6 @@ function buildLocationFilter(locationFilter) {
   // Tokens that strongly imply non-DE/EU even without explicit country (e.g. "Headquarter" is generic — keep)
   const looksHeadquarter = (s) => /\b(headquarter|hq)\b/.test(s);
 
-  const hasAllowedHit = (lower) =>
-    allowedCountries.some(k => lower.includes(k)) ||
-    allowedCities.some(k => lower.includes(k)) ||
-    allowedRemote.some(k => lower.includes(k));
-
   // Word-boundary check so "us" doesn't match "Munich" but does match "Georgia, US"
   const matchesWord = (lower, kw) => {
     if (lower.includes(kw)) {
@@ -161,6 +157,14 @@ function buildLocationFilter(locationFilter) {
     }
     return false;
   };
+
+  // Allowlist hits MUST also be word-boundary matched. With plain substring
+  // matching the allowed country "DE" matches "Copenhagen, DEnmark" and
+  // "BelgraDE, Serbia", silently whitelisting the whole world.
+  const hasAllowedHit = (lower) =>
+    allowedCountries.some(k => matchesWord(lower, k)) ||
+    allowedCities.some(k => matchesWord(lower, k)) ||
+    allowedRemote.some(k => matchesWord(lower, k));
 
   return (location) => {
     if (!location) return true; // unknown → keep, let Claude judge
@@ -173,6 +177,14 @@ function buildLocationFilter(locationFilter) {
     if (excludeCountries.some(k => matchesWord(lower, k))) return false;
     // If any explicit exclude city hits, drop
     if (excludeCities.some(k => matchesWord(lower, k))) return false;
+
+    // Strict allowlist: a location that names a real place but matched nothing in
+    // the allowlist is out of policy. Only reachable when allowed_* are configured.
+    // Ambiguous strings stay in so the evaluator can judge them.
+    if (locationFilter.strict_allowlist && (allowedCountries.length || allowedCities.length)) {
+      if (namesAPlace(lower)) return false;
+    }
+
     // Default: keep (avoid being too aggressive — let Claude judge ambiguous cases)
     return true;
   };
@@ -242,7 +254,7 @@ function appendToPipeline(offers) {
     const procIdx = text.indexOf('## Procesadas');
     const insertAt = procIdx === -1 ? text.length : procIdx;
     const block = `\n${marker}\n\n` + offers.map(o =>
-      `- [ ] ${o.url} | ${o.company} | ${o.title}`
+      `- [ ] ${o.url} | ${o.company} | ${o.title}${o.location ? ` | ${o.location}` : ''}`
     ).join('\n') + '\n\n';
     text = text.slice(0, insertAt) + block + text.slice(insertAt);
   } else {
@@ -252,7 +264,7 @@ function appendToPipeline(offers) {
     const insertAt = nextSection === -1 ? text.length : nextSection;
 
     const block = '\n' + offers.map(o =>
-      `- [ ] ${o.url} | ${o.company} | ${o.title}`
+      `- [ ] ${o.url} | ${o.company} | ${o.title}${o.location ? ` | ${o.location}` : ''}`
     ).join('\n') + '\n';
     text = text.slice(0, insertAt) + block + text.slice(insertAt);
   }

@@ -17,6 +17,7 @@ import { readFileSync, writeFileSync, existsSync, mkdirSync, readdirSync, unlink
 import { join, dirname, basename } from 'path';
 import { fileURLToPath } from 'url';
 import { spawnSync } from 'child_process';
+import { buildEmailBody, loadCandidate, htmlLetterToText } from './email-body-core.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PROJECT_DIR = __dirname;
@@ -314,7 +315,7 @@ function htmlToPdf(htmlPath, pdfPath) {
   return existsSync(pdfPath);
 }
 
-function createEmailDraft(num, meta, pdfPath) {
+function createEmailDraft(num, meta, pdfPath, letterHtml) {
   const slug = meta.company.toLowerCase().replace(/[^a-z0-9]/g, '');
   const draftPath = join(OUTPUT_DIR, `email-${String(num).padStart(3, '0')}-${slug}.md`);
 
@@ -326,16 +327,15 @@ function createEmailDraft(num, meta, pdfPath) {
     ? `Bewerbung: ${meta.role}`
     : `Application: ${meta.role}`;
 
-  const bodyGreeting = isGerman ? 'Sehr geehrte Damen und Herren,' : 'Dear Hiring Team,';
-  const bodyText = isGerman
-    ? `anbei finden Sie meinen Lebenslauf sowie ein auf die Position zugeschnittenes Anschreiben für die Stelle als ${meta.role}.
-
-Über die Möglichkeit eines persönlichen Gesprächs würde ich mich sehr freuen.`
-    : `Please find attached my CV and a tailored cover letter for the ${meta.role} position.
-
-I would be delighted to discuss my candidacy in a personal conversation.`;
-
-  const closing = isGerman ? 'Mit freundlichen Grüßen,' : 'Best regards,';
+  // The body states intent, fit and offer rather than pointing at an attachment
+  // nobody has a reason to open — see the header of email-body-core.mjs.
+  const { body: emailText } = buildEmailBody({
+    letterMarkdown: htmlLetterToText(letterHtml),
+    role: meta.role,
+    company: meta.company,
+    language: isGerman ? 'DE' : meta.language,
+    candidate: loadCandidate(PROJECT_DIR),
+  });
 
   const content = `TO: ${meta.recruiter_email || ''}
 SUBJECT: ${subject}
@@ -348,14 +348,7 @@ COVER_LETTER_PDF: ${pdfPath ? 'output/cover-letters/' + basename(pdfPath) : ''}
 CV_PDF: output/cv-updated.pdf
 JD_URL: ${meta.url}
 ---
-${bodyGreeting}
-
-${bodyText}
-
-${closing}
-Aimene Djebaili
-Aym.djebaili@gmail.com
-`;
+${emailText}`;
 
   writeFileSync(draftPath, content, 'utf-8');
   return draftPath;
@@ -450,7 +443,7 @@ async function main() {
 
     // Create email draft ONLY if we have a recruiter email
     if (meta.recruiter_email) {
-      const draftPath = createEmailDraft(num, meta, pdfPath);
+      const draftPath = createEmailDraft(num, meta, pdfPath, html);
       ok(`email draft: ${basename(draftPath)}`);
       draftCount++;
     } else {

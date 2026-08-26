@@ -14,7 +14,7 @@ import { chromium } from 'playwright';
 import { resolve, dirname } from 'path';
 import { readFile } from 'fs/promises';
 import { mkdirSync } from 'fs';
-import { fileURLToPath } from 'url';
+import { fileURLToPath, pathToFileURL } from 'url';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -112,17 +112,18 @@ async function generatePDF() {
   // Read HTML to inject font paths as absolute file:// URLs
   let html = await readFile(inputPath, 'utf-8');
 
-  // Resolve font paths relative to career-ops/fonts/
-  const fontsDir = resolve(__dirname, 'fonts');
-  html = html.replace(
-    /url\(['"]?\.\/fonts\//g,
-    `url('file://${fontsDir}/`
-  );
-  // Close any unclosed quotes from the replacement (handles all font formats)
-  html = html.replace(
-    /file:\/\/([^'")]+)\.(woff2?|ttf|otf)['"]?\)/g,
-    `file://$1.$2')`
-  );
+  // Resolve font + asset paths to absolute file:// URLs.
+  //
+  // These MUST go through pathToFileURL: on Windows a naive `file://` + path
+  // yields `file://C:\...`, where Chromium reads "C:" as the URL *host* and the
+  // request fails silently — fonts fall back to system sans and the profile
+  // photo renders as an empty box. pathToFileURL produces `file:///C:/...`
+  // with proper escaping for spaces and non-ASCII characters.
+  const fontsUrl = pathToFileURL(resolve(__dirname, 'fonts')).href;
+  html = html.replace(/url\((['"]?)\.\/fonts\//g, `url($1${fontsUrl}/`);
+
+  const assetsUrl = pathToFileURL(resolve(__dirname, 'assets')).href;
+  html = html.replace(/src=(['"])\.\/assets\//g, `src=$1${assetsUrl}/`);
 
   // Normalize text for ATS compatibility (issue #1)
   const normalized = normalizeTextForATS(html);
@@ -133,18 +134,41 @@ async function generatePDF() {
     console.log(`🧹 ATS normalization: ${totalReplacements} replacements (${breakdown})`);
   }
 
+  // The transformed HTML goes to a temp file that we navigate to, rather than
+  // page.setContent(). setContent leaves the document on an about:blank origin,
+  // and Chromium refuses to load file:// subresources from it — every @font-face
+  // and the profile photo silently fail, so the PDF quietly ships with fallback
+  // fonts and no headshot. Navigating gives the document a file:// origin.
+  const tmpHtmlPath = resolve(dirname(outputPath), `.generate-pdf-${process.pid}.tmp.html`);
+  await (await import('fs/promises')).writeFile(tmpHtmlPath, html, 'utf-8');
+
   const browser = await chromium.launch({ headless: true });
   try {
     const page = await browser.newPage();
 
-    // Set content with file base URL for any relative resources
-    await page.setContent(html, {
-      waitUntil: 'networkidle',
-      baseURL: `file://${dirname(inputPath)}/`,
+    const failedAssets = [];
+    page.on('requestfailed', (req) => {
+      const url = req.url();
+      if (/\.(woff2?|ttf|otf|png|jpe?g|gif|svg|webp)(\?|$)/i.test(url)) failedAssets.push(url);
     });
+
+    await page.goto(pathToFileURL(tmpHtmlPath).href, { waitUntil: 'networkidle' });
 
     // Wait for fonts to load
     await page.evaluate(() => document.fonts.ready);
+
+    // Fail loudly rather than shipping a CV with a missing photo or wrong fonts
+    const brokenImages = await page.evaluate(() =>
+      [...document.images]
+        .filter((img) => !img.complete || img.naturalWidth === 0)
+        .map((img) => img.src)
+    );
+    for (const url of new Set([...failedAssets, ...brokenImages])) {
+      console.warn(`⚠️  asset failed to load: ${url}`);
+    }
+    if (brokenImages.length) {
+      throw new Error(`${brokenImages.length} image(s) did not render — check the paths above`);
+    }
 
     // Generate PDF
     const pdfBuffer = await page.pdf({
@@ -174,6 +198,7 @@ async function generatePDF() {
     return { outputPath, pageCount, size: pdfBuffer.length };
   } finally {
     await browser.close();
+    await (await import('fs/promises')).rm(tmpHtmlPath, { force: true });
   }
 }
 
