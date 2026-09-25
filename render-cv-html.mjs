@@ -31,11 +31,29 @@ async function loadProfileExtras() {
         console.warn(`⚠️  photo listed in profile.yml not found on disk: ${onDisk} — rendering without it`);
       }
     }
-    return { phone, photoTag };
+    return { phone, photoTag, legalName: candidate.legal_name || '' };
   } catch (error) {
     console.warn(`⚠️  could not read config/profile.yml (${error.message}) — rendering without phone/photo`);
-    return { phone: '', photoTag: '' };
+    return { phone: '', photoTag: '', legalName: '' };
   }
+}
+
+/**
+ * The legal name, in the smallest type on the page.
+ *
+ * He applies as Armin Djebaili; the passport, both degree certificates and the
+ * IELTS result read Aimene Djebaili. Printing the legal name once, quietly,
+ * costs nothing and answers the question a careful reader would otherwise have
+ * to put to him — this CV claims credentials that are not in the name at the
+ * top of it. Returns '' when profile.yml sets no legal_name, so the block
+ * disappears entirely rather than printing a bare rule.
+ */
+function legalNoteHtml(legalName, lang) {
+  if (!legalName) return '';
+  const text = lang === 'de'
+    ? `Zeugnisse und Zertifikate lauten auf meinen amtlichen Namen: ${legalName}.`
+    : `Certificates and official documents are issued in my legal name: ${legalName}.`;
+  return `<div class="legal-note">${escapeHtml(text)}</div>`;
 }
 
 function escapeHtml(value) {
@@ -91,7 +109,12 @@ function renderTable(lines) {
     .map((line) => line.replace(/(^\||\|$)/g, '').split('|').map((cell) => cell.trim()));
 
   if (rows.length < 2) return '';
-  const [header, ...body] = rows;
+  const [header, ...rest] = rows;
+  // Markdown's |---|---| alignment row is not a record. It was rendered as one,
+  // so every CV this project produced printed a line of dashes between the
+  // language table's header and its first language — and pdftotext, which is
+  // what an ATS runs, reads that line as data.
+  const body = rest.filter(row => !row.every(cell => /^:?-{2,}:?$/.test(cell)));
   return `
     <table class="data-table">
       <thead><tr>${header.map((cell) => `<th>${escapeHtml(cell)}</th>`).join('')}</tr></thead>
@@ -138,6 +161,14 @@ function parseCv(raw) {
   let portfolioDisplay = '';
   let summaryText = '';
 
+  // The bold line under the name ("**Finanzwesen und Digitale Ökonomie ...**").
+  // It has always been in cv.md and the template had nowhere to put it, so every
+  // CV this project produced opened with a name and a phone number and no
+  // statement of what the person does. tailor-cv.mjs rewrites this one line to
+  // the title of the role being applied for.
+  const taglineLine = headerLines.find((line) => /^\*\*.+\*\*$/.test(line.trim()) && !line.includes('@'));
+  const tagline = taglineLine ? taglineLine.trim().replace(/^\*\*|\*\*$/g, '').trim() : '';
+
   const contactLine = headerLines.find((line) => line.includes('@') || line.includes('linkedin.com') || line.includes('http')) || '';
   if (contactLine) {
     const parts = contactLine.split('|').map((part) => part.trim());
@@ -175,14 +206,31 @@ function parseCv(raw) {
     portfolioDisplay = portfolioUrl.replace(/^https?:\/\//, '');
   }
 
-  summaryText = renderParagraphs(sections['Professional Profile'] || sections['Summary'] || []);
+  summaryText = renderParagraphs(
+    sections['Professional Profile'] || sections['Summary']
+    || sections['Kurzprofil'] || sections['Profil'] || []);
+
+  // Section headings differ by language. Take the first heading that exists so
+  // one renderer serves both cv.md and cv-de.md — otherwise the German
+  // "Kenntnisse" block is silently dropped, because the key is 'Skills'.
+  const pick = (...names) => {
+    for (const n of names) if (sections[n]) return sections[n];
+    return [];
+  };
 
   const experienceHtml = renderExperienceSections(sections);
-  const educationHtml = renderEducationSection(sections['Education'] || []);
-  const skillsHtml = renderSkillsSection(sections['Skills'] || []);
-  const competenciesHtml = renderCompetencyTags(sections['Skills'] || []);
-  const projectsHtml = renderProjectsSection(sections['Projects'] || []);
-  const certificationsHtml = renderCertificationsSection(sections['Certifications'] || []);
+  const educationHtml = renderEducationSection(pick('Education', 'Ausbildung'));
+  // Competencies and Skills both read the same source, so rendering both prints
+  // the identical list twice and eats half a page. Keep the tag cloud, which
+  // scans better, and drop the plain repeat of it.
+  const skillsSource = pick('Skills', 'Kenntnisse', 'Fähigkeiten');
+  const competenciesHtml = renderCompetencyTags(skillsSource);
+  const skillsHtml = competenciesHtml ? '' : renderSkillsSection(skillsSource);
+  const projectsHtml = renderProjectsSection(pick('Projects', 'Projekte'));
+  const certificationsHtml = renderCertificationsSection(pick('Certifications', 'Zertifikate'));
+  const languageRows = pick('Languages', 'Sprachen');
+  const languagesHtml = renderLanguagesSection(languageRows);
+  const headerLanguagesHtml = renderHeaderLanguages(languageRows);
 
   return {
     name,
@@ -199,11 +247,65 @@ function parseCv(raw) {
     projectsHtml,
     certificationsHtml,
     skillsHtml,
+    languagesHtml,
+    tagline,
+    headerLanguagesHtml,
   };
 }
 
+/**
+ * The language levels, repeated as chips in the header.
+ *
+ * The table at the foot of the CV is the record; this is the one a recruiter
+ * actually sees. On a German application the German level decides whether the
+ * CV is read at all, and it was sitting below Ausbildung on page two — found,
+ * if at all, after the decision had been taken. The German chip is emphasised
+ * for that reason.
+ */
+function renderHeaderLanguages(lines) {
+  const rows = [];
+  for (const raw of lines || []) {
+    const line = String(raw).trim();
+    if (!line.startsWith('|')) continue;
+    const cells = line.split('|').map(c => c.trim());
+    cells.shift();                                   // empty text before the leading pipe
+    if (cells[cells.length - 1] === '') cells.pop(); // and after the trailing one
+    if (cells.length < 2) continue;
+    // Skip the markdown header row and its |---|---| separator.
+    if (cells.every(c => /^:?-{2,}:?$/.test(c))) continue;
+    if (/^(sprache|language)$/i.test(cells[0])) continue;
+    rows.push({ language: cells[0], level: cells[1] });
+  }
+  if (!rows.length) return '';
+  const chips = rows.map(({ language, level }) => {
+    const primary = /^(deutsch|german)/i.test(language) ? ' lang-primary' : '';
+    return `<span class="lang-chip${primary}">${escapeHtml(language)} ${escapeHtml(level)}</span>`;
+  });
+  return `<div class="header-langs">${chips.join('')}</div>`;
+}
+
+/**
+ * The languages table. cv.md has always carried one and the renderer had no
+ * placeholder for it, so no CV this project produced has ever stated a language
+ * level — the one thing a German recruiter checks first.
+ */
+function renderLanguagesSection(lines) {
+  const table = renderTable(lines);
+  if (table.trim()) return table;
+  const list = renderList(lines);
+  if (list.trim()) return list;
+  const text = renderParagraphs(lines);
+  return text.trim() ? text : '';
+}
+
 function renderExperienceSections(sections) {
-  const keys = ['Professional Experience', 'Entrepreneurial Experience', 'Experience', 'Work Experience'];
+  // German headings included, otherwise a German CV renders "No work
+  // experience found." over an otherwise complete Lebenslauf — which is worse
+  // than no CV at all.
+  const keys = [
+    'Professional Experience', 'Entrepreneurial Experience', 'Experience', 'Work Experience',
+    'Berufserfahrung', 'Unternehmerische Erfahrung', 'Berufliche Erfahrung', 'Praktische Erfahrung',
+  ];
   const blocks = [];
 
   for (const key of keys) {
@@ -241,15 +343,41 @@ function renderExperienceItems(lines) {
 }
 
 function renderJobItem(item) {
-  const [rolePart, companyPart] = item.title.split('–').map((part) => part.trim());
+  // Both dashes: the CV was rewritten with em dashes in 2026-09, and splitting on
+  // the en dash alone put the whole "Role — Company" string into the role line.
+  const [rolePart, companyPart] = item.title.split(/\s[–—]\s/).map((part) => part.trim());
   let company = companyPart || '';
   let role = rolePart || item.title;
 
   const metaLine = item.meta.find((line) => line.startsWith('**') && line.endsWith('**')) || '';
   const metaText = metaLine.replace(/\*\*/g, '').trim();
-  const [location = '', period = ''] = metaText.split('|').map((part) => part.trim());
+  let [location = '', period = ''] = metaText.split('|').map((part) => part.trim());
 
-  const bulletsHtml = item.bullets.length ? `<ul>${item.bullets.map((bullet) => `<li>${inlineMd(bullet)}</li>`).join('')}</ul>` : '';
+  // The CV no longer uses bullet lists; each job is prose. An italic line under
+  // the heading carries the context and the dates ("*Wholesale company · Dec 2024
+  // – 16 Aug 2026*"), and every other line is a paragraph. Before this, those
+  // paragraphs landed in `meta`, were never rendered, and the PDF shipped with
+  // job titles and no descriptions at all (caught by reading the PDF back).
+  const subtitleLine = item.meta.find((line) => /^\*[^*].*\*$/.test(line.trim()));
+  if (subtitleLine && !period) {
+    const inner = subtitleLine.trim().replace(/^\*|\*$/g, '');
+    const parts = inner.split('·').map((p) => p.trim()).filter(Boolean);
+    const dateIdx = parts.findIndex((p) => /\d{4}|heute|present/i.test(p));
+    if (dateIdx >= 0) {
+      period = parts[dateIdx];
+      location = parts.filter((_, i) => i !== dateIdx).join(' · ');
+    } else {
+      location = inner;
+    }
+  }
+
+  const paragraphs = item.meta
+    .filter((line) => line !== metaLine && line !== subtitleLine && !isHorizontalRule(line))
+    .map((line) => `<p>${inlineMd(line)}</p>`)
+    .join('');
+
+  const bulletsHtml = paragraphs
+    || (item.bullets.length ? `<ul>${item.bullets.map((bullet) => `<li>${inlineMd(bullet)}</li>`).join('')}</ul>` : '');
 
   // inlineMd, not escapeHtml: headings carry markdown emphasis such as
   // "iPro Booking *(Hospitality Wholesale Technology Company)*", which would
@@ -263,7 +391,7 @@ function renderJobItem(item) {
         </div>
         <div class="job-period">${escapeHtml(period)}</div>
       </div>
-      ${location ? `<div class="job-location">${escapeHtml(location)}</div>` : ''}
+      ${location ? `<div class="job-location">${inlineMd(location)}</div>` : ''}
       ${bulletsHtml}
     </div>
   `;
@@ -272,6 +400,11 @@ function renderJobItem(item) {
 function renderEducationSection(lines) {
   const items = [];
   let current = null;
+  // Text placed under "## Education" BEFORE the first degree was silently
+  // dropped — `if (!current) continue` threw it away. That is where a statement
+  // about the degrees as a whole belongs, and it is why the anabin recognition
+  // note has never appeared on a single rendered CV despite sitting in cv.md.
+  const lead = [];
 
   for (const line of lines) {
     const heading = line.match(/^###\s+(.*)$/);
@@ -280,7 +413,10 @@ function renderEducationSection(lines) {
       current = { title: heading[1].trim(), meta: [], bullets: [] };
       continue;
     }
-    if (!current) continue;
+    if (!current) {
+      if (line.trim() && !isHorizontalRule(line.trim())) lead.push(line.trim());
+      continue;
+    }
     if (line.trim().startsWith('- ')) {
       current.bullets.push(line.trim().slice(2).trim());
     } else if (line.trim()) {
@@ -289,25 +425,36 @@ function renderEducationSection(lines) {
   }
   if (current) items.push(current);
 
-  return items
+  // A German employer checks whether a foreign degree counts before reading
+  // anything else, so this sits at the top of the section rather than in a
+  // footnote.
+  const leadHtml = lead.length
+    ? `<p class="edu-note">${lead.map(l => inlineMd(l)).join(' ')}</p>`
+    : '';
+
+  return leadHtml + items
     .map((item) => {
       const title = inlineMd(item.title);
-      const institutionMeta = item.meta
-        .filter((meta) => !isHorizontalRule(meta))
-        .map((meta) => meta.replace(/\*\*/g, '').trim())
-        .filter(Boolean)
-        .join(' | ');
-      const bulletsHtml = item.bullets.length
-        ? `<ul>${item.bullets.map((bullet) => `<li>${inlineMd(bullet)}</li>`).join('')}</ul>`
-        : '';
+      const lines = item.meta.filter((meta) => !isHorizontalRule(meta));
+      // The institution sits in italics directly under the degree; the bold line
+      // is the anabin recognition note, which must stay bold and on its own line
+      // beside the degree. Joining everything with " | " printed the raw asterisks
+      // and buried the recognition note mid-sentence.
+      const institution = lines.find((l) => /^\*[^*].*\*$/.test(l.trim())) || '';
+      const recognition = lines.find((l) => /^\*\*.*\*\*$/.test(l.trim())) || '';
+      const rest = lines.filter((l) => l !== institution && l !== recognition);
+      const bulletsHtml = rest.length
+        ? rest.map((l) => `<p>${inlineMd(l)}</p>`).join('')
+        : (item.bullets.length ? `<ul>${item.bullets.map((bullet) => `<li>${inlineMd(bullet)}</li>`).join('')}</ul>` : '');
       return `
         <div class="edu-item avoid-break">
           <div class="job-header">
             <div>
               <div class="job-role">${title}</div>
-              <div class="job-company">${escapeHtml(institutionMeta)}</div>
+              ${institution ? `<div class="job-company">${inlineMd(institution.replace(/^\*|\*$/g, ''))}</div>` : ''}
             </div>
           </div>
+          ${recognition ? `<p class="edu-recognition">${inlineMd(recognition)}</p>` : ''}
           ${bulletsHtml}
         </div>
       `;
@@ -316,9 +463,19 @@ function renderEducationSection(lines) {
 }
 
 function renderSkillsSection(lines) {
+  // Skills are now one middot-separated sentence rather than a bullet list, so
+  // split on the separator; the old bullet form still works for any CV that
+  // keeps it.
+  const inline = lines
+    .filter((line) => line.trim() && !line.trim().startsWith('- ') && !isHorizontalRule(line.trim()))
+    .join(' ')
+    .split(/\s*·\s*/)
+    .map((s) => s.trim())
+    .filter(Boolean);
   const tags = lines
     .filter((line) => line.trim().startsWith('- '))
-    .map((line) => `<span class="competency-tag">${escapeHtml(line.trim().slice(2).trim())}</span>`);
+    .map((line) => `<span class="competency-tag">${escapeHtml(line.trim().slice(2).trim())}</span>`)
+    .concat(inline.map((s) => `<span class="competency-tag">${escapeHtml(s)}</span>`));
   return tags.length ? `<div class="competencies-grid">${tags.join('')}</div>` : renderParagraphs(lines);
 }
 
@@ -387,11 +544,47 @@ function tidyContactRow(html) {
   );
 }
 
+/**
+ * Section headings printed on the rendered CV. A German CV under English
+ * headings reads as a machine translation, which is the exact impression to
+ * avoid on a German-language application.
+ */
+const LABELS = {
+  en: {
+    summary: 'Professional Summary',
+    competencies: 'Core Competencies',
+    experience: 'Work Experience',
+    projects: 'Projects',
+    education: 'Education',
+    certifications: 'Certifications',
+    skills: 'Skills',
+    languages: 'Languages',
+  },
+  de: {
+    summary: 'Kurzprofil',
+    competencies: 'Kernkompetenzen',
+    experience: 'Berufserfahrung',
+    projects: 'Projekte',
+    education: 'Ausbildung',
+    certifications: 'Zertifikate',
+    skills: 'Kenntnisse',
+    languages: 'Sprachen',
+  },
+};
+
 async function main() {
   const args = process.argv.slice(2);
-  const cvPath = resolve(args[0] || 'cv.md');
-  const outputPath = resolve(args[1] || 'output/cv.html');
-  const templatePath = resolve(args[2] || 'templates/cv-template.html');
+  const cvPath = resolve(args.find(a => !a.startsWith('--')) || 'cv.md');
+  const positional = args.filter(a => !a.startsWith('--'));
+  const outputPath = resolve(positional[1] || 'output/cv.html');
+  const templatePath = resolve(positional[2] || 'templates/cv-template.html');
+  // --lang=de, or inferred from a "-de" in the filename, so
+  // `node render-cv-html.mjs cv-de.md` simply does the right thing.
+  const langFlag = args.find(a => a.startsWith('--lang='))?.split('=')[1];
+  const base = cvPath.split(/[\\/]/).pop();
+  const lang = langFlag || (/(^|[-_.])de([-_.]|$)/i.test(base) ? 'de' : 'en');
+  const L = LABELS[lang] || LABELS.en;
+  if (lang !== 'en') console.log(`ℹ️  rendering with ${lang} section headings`);
 
   const [cvRaw, template] = await Promise.all([
     readFile(cvPath, 'utf8'),
@@ -417,9 +610,16 @@ async function main() {
   }
 
   const html = template2
-    .replace(/{{LANG}}/g, 'en')
+    // Was hardcoded to 'en', which told the PDF renderer and any screen reader
+    // that a German Lebenslauf was English.
+    .replace(/{{LANG}}/g, lang)
     .replace(/{{PAGE_WIDTH}}/g, '840px')
+    .replace(/{{LEGAL_NOTE_BLOCK}}/g, legalNoteHtml(extras.legalName, lang))
     .replace(/{{NAME}}/g, escapeHtml(parsed.name || ''))
+    .replace(/{{TAGLINE_BLOCK}}/g, parsed.tagline
+      ? `<div class="header-tagline">${escapeHtml(parsed.tagline)}</div>`
+      : '')
+    .replace(/{{HEADER_LANGUAGES}}/g, parsed.headerLanguagesHtml || '')
     .replace(/{{PHONE}}/g, escapeHtml(extras.phone || ''))
     .replace(/{{PHOTO_IMG}}/g, extras.photoTag || '')
     .replace(/{{EMAIL}}/g, escapeHtml(parsed.email || ''))
@@ -428,20 +628,23 @@ async function main() {
     .replace(/{{PORTFOLIO_URL}}/g, escapeHtml(parsed.portfolioUrl || '#'))
     .replace(/{{PORTFOLIO_DISPLAY}}/g, escapeHtml(parsed.portfolioDisplay || 'Portfolio'))
     .replace(/{{LOCATION}}/g, escapeHtml(parsed.location || ''))
-    .replace(/{{SECTION_SUMMARY}}/g, 'Professional Summary')
+    .replace(/{{SECTION_SUMMARY}}/g, L.summary)
     .replace(/{{SUMMARY_TEXT}}/g, parsed.summaryText || '<p>No profile summary found.</p>')
-    .replace(/{{SECTION_COMPETENCIES}}/g, 'Core Competencies')
+    .replace(/{{SECTION_COMPETENCIES}}/g, L.competencies)
     .replace(/{{COMPETENCIES}}/g, parsed.competenciesHtml)
-    .replace(/{{SECTION_EXPERIENCE}}/g, 'Work Experience')
+    .replace(/{{SECTION_EXPERIENCE}}/g, L.experience)
     .replace(/{{EXPERIENCE}}/g, parsed.experienceHtml || '<p>No work experience found.</p>')
-    .replace(/{{SECTION_PROJECTS}}/g, 'Projects')
+    .replace(/{{SECTION_PROJECTS}}/g, L.projects)
     .replace(/{{PROJECTS}}/g, parsed.projectsHtml || '')
-    .replace(/{{SECTION_EDUCATION}}/g, 'Education')
+    .replace(/{{SECTION_EDUCATION}}/g, L.education)
     .replace(/{{EDUCATION}}/g, parsed.educationHtml || '<p>No education found.</p>')
-    .replace(/{{SECTION_CERTIFICATIONS}}/g, 'Certifications')
+    .replace(/{{SECTION_CERTIFICATIONS}}/g, L.certifications)
     .replace(/{{CERTIFICATIONS}}/g, parsed.certificationsHtml || '')
-    .replace(/{{SECTION_SKILLS}}/g, 'Skills')
-    .replace(/{{SKILLS}}/g, parsed.skillsHtml || '<p>No skills found.</p>');
+    .replace(/{{SECTION_SKILLS}}/g, L.skills)
+    .replace(/{{SKILLS}}/g, parsed.skillsHtml || '<p>No skills found.</p>')
+    .replace(/{{LANGUAGES_BLOCK}}/g, parsed.languagesHtml
+      ? `<div class="section avoid-break"><div class="section-title">${L.languages}</div>${parsed.languagesHtml}</div>`
+      : '');
 
   await ensureDirectoryExists(outputPath);
   await writeFile(outputPath, tidyContactRow(html), 'utf8');

@@ -2,7 +2,34 @@
   "permissions": {
     "allow": [
       "WebFetch",
-      "WebSearch"
+      "WebSearch",
+      "Bash(node save-drafts.mjs *)",
+      "Bash(node auto-apply.mjs *)",
+      "Bash(cd * && export NODE_OPTIONS=--use-system-ca && node auto-apply.mjs *)",
+      "Bash(cd * && export NODE_OPTIONS=--use-system-ca && timeout * node auto-apply.mjs *)",
+      "Bash(node rebuild-email-bodies.mjs *)",
+      "Bash(node initiativ-drafts.mjs *)",
+      "Bash(node daily-run.mjs *)",
+      "Bash(node find-application-email.mjs *)",
+      "Bash(node update-system.mjs *)",
+      "Bash(node scan-boards.mjs *)",
+      "Bash(node scan.mjs *)",
+      "Bash(node tailor-cv.mjs *)",
+      "Bash(node merge-tracker.mjs *)",
+      "Bash(node verify-pipeline.mjs *)",
+      "Bash(node normalize-statuses.mjs *)",
+      "Bash(node dedup-tracker.mjs *)",
+      "Bash(node test-all.mjs *)",
+      "Bash(node check-liveness.mjs *)",
+      "Bash(node check-applied.mjs *)",
+      "Bash(node check-draft-addresses.mjs *)",
+      "Bash(node cleanup-drafts.mjs *)",
+      "Bash(node generate-pdf.mjs *)",
+      "Bash(node generate-cover-letter.mjs *)",
+      "Bash(node render-cv-html.mjs *)",
+      "Bash(node prune-pipeline.mjs *)",
+      "Bash(node send-digest.mjs *)",
+      "Bash(node doctor.mjs *)"
     ]
   }
 }

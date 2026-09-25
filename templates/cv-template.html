@@ -52,15 +52,52 @@
     print-color-adjust: exact;
   }
 
+  /* Typography, deliberately: 11.1px at 1.66 gives roughly 72 characters a line
+     on A4, which is the comfortable reading measure. Prose paragraphs replaced
+     the bullet lists, so line-height and paragraph spacing now do the work that
+     the bullets used to do — separating one idea from the next.
+     Revised 2026-09-21: the size went up a third of a pixel and the leading came
+     down from 1.72. Those move together — larger type needs proportionally less
+     leading, and at 1.72 the lines had drifted far enough apart that a paragraph
+     stopped reading as one block. Net page usage is unchanged.
+     'onum' (oldstyle figures) was dropped for 'lnum' + 'tnum'. Oldstyle numerals
+     sit at x-height with descenders, which is elegant in running prose and wrong
+     here: the numbers ARE the argument (€1.59M, 345 from 1,271, 100+ partners),
+     and lining figures at cap height let a skimming reader find them. */
   body {
     font-family: 'DM Sans', sans-serif;
-    font-size: 11px;
-    line-height: 1.5;
-    color: #1a1a2e;
+    font-size: 11.1px;
+    line-height: 1.66;
+    color: #22222c;
     background: #ffffff;
     padding: 0;
     margin: 0;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+    font-feature-settings: 'kern' 1, 'liga' 1, 'lnum' 1, 'tnum' 1;
+    font-variant-numeric: lining-nums tabular-nums;
   }
+
+  /* Never justify: justified text on a column this narrow opens rivers of white
+     space between words, which is exactly the "spacing between words" problem a
+     ragged-right setting avoids. */
+  p, li, .summary-text { text-align: left; hyphens: none; }
+
+  p { margin: 0 0 8px 0; }
+  p:last-child { margin-bottom: 0; }
+
+  /* Nothing in this CV is a list any more. If a stray list survives a render,
+     it should still read as prose rather than sprouting bullets. */
+  ul, ol { margin: 0 0 8px 0; padding-left: 0; list-style: none; }
+  li { margin-bottom: 5px; }
+
+  /* 700, not 600. The bold spans are the metrics, and at 600 against a 400 body
+     in DM Sans the contrast was too slight to catch the eye mid-paragraph. */
+  strong { font-weight: 700; color: #14142b; }
+
+  /* Keep a heading from stranding at the foot of a page, and never leave one
+     line of a paragraph alone on either side of a break. */
+  p { orphans: 2; widows: 2; }
 
   .page {
     width: 100%;
@@ -83,25 +120,110 @@
     min-width: 0;
   }
 
+  /* German Lebenslauf convention: a rectangular photo at 35x45mm, not a circular
+     avatar crop. The source image is cut to that ratio in assets/, so the frame
+     only has to sit still and stay sharp. */
   .header-photo {
-    width: 80px;
-    height: 80px;
-    border-radius: 50%;
+    width: 84px;
+    height: 108px;
+    border-radius: 2px;
     object-fit: cover;
+    object-position: center 18%;
     flex-shrink: 0;
-    border: 2px solid #fff;
-    box-shadow: 0 0 0 1px #eee;
+    border: 1px solid #e6e6e6;
   }
 
+/* Reversed 2026-09-21. The name had been demoted to a 13px grey label on the
+     argument that the role matters more than the person. That holds when the
+     name is just an identifier; it stops holding once the name is a deliberate
+     professional choice. Armin Djebaili is the name he works under and wants
+     recognised, so it is the first thing on the page again — display face,
+     27px, full weight, full contrast. */
   .header h1 {
     font-family: 'Space Grotesk', sans-serif;
-    font-size: 28px;
+    font-size: 27px;
     font-weight: 700;
-    color: #1a1a2e;
+    color: #14142b;
     letter-spacing: -0.02em;
-    margin-bottom: 6px;
+    text-transform: none;
+    margin-bottom: 2px;
     line-height: 1.1;
   }
+
+  /* The role applied for, printed under the name. German Lebenslauf convention
+     puts the target position here, and an ATS reads it as the title of the
+     document — without it the first thing on the page is a name and a phone
+     number, which matches no posting at all. */
+  /* Steps down below the name as of 2026-09-21 so the eye lands on the person
+     first and the target role second. Still the line an ATS reads as the
+     document title, so it keeps its weight and its own colour — it is quieter
+     than the name, not faint. */
+  .header-tagline {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 14.5px;
+    font-weight: 600;
+    color: #4a4a58;
+    letter-spacing: -0.005em;
+    margin-bottom: 9px;
+    line-height: 1.25;
+  }
+
+  /* Language levels repeated in the header. They are already tabulated at the
+     bottom of the CV, but a German recruiter checks the German level before
+     anything else and should not have to reach page two to find it. */
+  .legal-note {
+    margin-top: 14px;
+    padding-top: 7px;
+    border-top: 1px solid #ececf0;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 7.5px;
+    font-weight: 400;
+    color: #9a9aa4;
+    letter-spacing: 0.01em;
+  }
+
+  .header-langs {
+    margin-top: 7px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 10.5px;
+    color: #444;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    align-items: center;
+  }
+
+  .header-langs .lang-chip {
+    background: hsl(187, 60%, 95%);
+    border: 1px solid hsl(187, 45%, 82%);
+    border-radius: 9px;
+    padding: 1px 7px;
+    white-space: nowrap;
+  }
+
+  .header-langs .lang-chip.lang-primary {
+    background: hsl(187, 74%, 32%);
+    border-color: hsl(187, 74%, 32%);
+    color: #fff;
+    font-weight: 600;
+  }
+
+  /* The recognition note above the degrees. A foreign qualification is the
+     first thing a German employer checks, so it is given the weight of a
+     statement rather than a footnote. */
+  .edu-note {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 11px;
+    line-height: 1.45;
+    color: #1a1a2e;
+    background: hsl(187, 60%, 96%);
+    border-left: 3px solid hsl(187, 74%, 32%);
+    border-radius: 0 4px 4px 0;
+    padding: 7px 10px;
+    margin: 0 0 12px;
+  }
+
+  .edu-note strong { color: hsl(187, 74%, 28%); }
 
   .header-gradient {
     height: 2px;
@@ -110,14 +232,17 @@
     margin-bottom: 10px;
   }
 
+  /* Wider gaps between items and a lighter separator, so the row reads as
+     discrete facts rather than one run-on string. */
   .contact-row {
     display: flex;
     flex-wrap: wrap;
-    gap: 8px 14px;
+    gap: 6px 16px;
     font-family: 'DM Sans', sans-serif;
-    font-size: 10.5px;
-    line-height: 1.4;
-    color: #555;
+    font-size: 10.4px;
+    line-height: 1.5;
+    color: #52525c;
+    font-variant-numeric: lining-nums tabular-nums;
   }
 
   .contact-row a {
@@ -130,28 +255,40 @@
   }
 
   /* === SECTIONS === */
+  /* 18px → 23px. The gap between one section and the next was barely larger
+     than the gap between two jobs inside a section, so the page read as one
+     undifferentiated column. The hierarchy now steps: 8px between paragraphs,
+     16px between jobs, 23px between sections. */
   .section {
-    margin-bottom: 18px;
+    margin-bottom: 23px;
   }
 
+  .section:last-child { margin-bottom: 0; }
+
+  /* Darker and heavier than before (#8a8a95/600 → #63636f/700). These are the
+     signposts a recruiter scans for; at the old weight and colour they were
+     quieter than the body text they introduced. The wide tracking stays — it is
+     what makes 10px uppercase legible — but it now has the weight to carry it. */
   .section-title {
-    font-family: 'Space Grotesk', sans-serif;
-    font-size: 12px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 10px;
     font-weight: 700;
     text-transform: uppercase;
-    letter-spacing: 0.06em;
-    color: hsl(187, 74%, 32%);
-    border-bottom: 1.5px solid #e2e2e2;
-    padding-bottom: 4px;
-    margin-bottom: 10px;
+    letter-spacing: 0.16em;
+    color: #63636f;
+    border-bottom: 0.75px solid #e2e2e8;
+    padding-bottom: 6px;
+    margin-bottom: 13px;
     line-height: 1.2;
   }
 
   /* === PROFESSIONAL SUMMARY === */
+  /* The one block that is read rather than scanned, so it is set a shade larger
+     than the body and a shade looser. */
   .summary-text {
-    font-size: 11px;
+    font-size: 11.4px;
     line-height: 1.7;
-    color: #2f2f2f;
+    color: #2c2c36;
   }
 
   /* Links must never break across lines */
@@ -179,40 +316,48 @@
 
   /* === WORK EXPERIENCE === */
   .job {
-    margin-bottom: 14px;
+    margin-bottom: 16px;
   }
+
+  .job:last-child { margin-bottom: 0; }
 
   .job-header {
     display: flex;
     justify-content: space-between;
     align-items: baseline;
     gap: 12px;
-    margin-bottom: 4px;
+    margin-bottom: 3px;
   }
 
   .job-company {
     font-family: 'Space Grotesk', sans-serif;
-    font-size: 12.5px;
-    font-weight: 600;
-    color: hsl(270, 70%, 45%);
+    font-size: 13px;
+    font-weight: 700;
+    color: hsl(270, 70%, 42%);
+    letter-spacing: -0.005em;
   }
 
+  /* Tabular figures so the date ranges down the right edge line up column-wise
+     instead of drifting by a few pixels per row. */
   .job-period {
-    font-size: 10.5px;
-    color: #777;
+    font-size: 10.2px;
+    font-weight: 500;
+    color: #6f6f7a;
     white-space: nowrap;
+    font-variant-numeric: lining-nums tabular-nums;
   }
 
   .job-role {
-    font-size: 11px;
+    font-size: 11.2px;
     font-weight: 600;
-    color: #333;
-    margin-bottom: 6px;
+    color: #3a3a46;
+    margin-bottom: 7px;
+    letter-spacing: 0.002em;
   }
 
   .job-location {
     font-size: 10px;
-    color: #888;
+    color: #85858f;
   }
 
   .job ul {
@@ -282,6 +427,30 @@
     font-weight: 600;
     font-size: 11px;
     color: #333;
+  }
+
+  /* The degree is the credential; the university is context.
+     Education reused the experience block's styling, where the organisation is
+     the headline (12.5px, purple, 600) and the role sits quietly beneath it at
+     11px. That is right for a job and backwards for a degree: an employer
+     checking this section is looking for "Master of Science in Digital
+     Economics", and the awarding university is a footnote to it. Scoped to
+     .edu-item so Work Experience keeps the company-first hierarchy. */
+  .edu-item .job-role {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 14px;
+    font-weight: 700;
+    color: #14142b;
+    letter-spacing: -0.01em;
+    margin-bottom: 1px;
+  }
+
+  .edu-item .job-company {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 9.5px;
+    font-weight: 400;
+    color: #8f8f99;
+    letter-spacing: 0.01em;
   }
 
   .edu-org {
@@ -375,6 +544,7 @@
   <div class="header avoid-break">
     <div class="header-text">
       <h1>{{NAME}}</h1>
+      {{TAGLINE_BLOCK}}
       <div class="header-gradient"></div>
       <div class="contact-row">
         <span>{{PHONE}}</span>
@@ -387,6 +557,7 @@
         <span class="separator">|</span>
         <span>{{LOCATION}}</span>
       </div>
+      {{HEADER_LANGUAGES}}
     </div>
     {{PHOTO_IMG}}
   </div>
@@ -434,6 +605,18 @@
     <div class="section-title">{{SECTION_SKILLS}}</div>
     {{SKILLS}}
   </div>
+
+  <!-- LANGUAGES -->
+  <!-- Was missing entirely, so the CV never stated a language level even though
+       cv.md carried a table of them — which matters most on a German
+       application, where the German level is the first thing a recruiter checks. -->
+  {{LANGUAGES_BLOCK}}
+
+  <!-- The legal name, printed once at the foot of the page in the smallest type
+       on it. It is here because every certificate this CV claims — both degrees,
+       the IELTS result — is issued in that name, and a reader who notices the
+       mismatch should find the answer on the same page rather than wonder. -->
+  {{LEGAL_NOTE_BLOCK}}
 
 </div>
 </body>

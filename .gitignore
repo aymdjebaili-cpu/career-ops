@@ -41,3 +41,53 @@ package-lock.json
 config/gmail-credentials.json
 config/gmail-token.json
 config/hunter-api-key.json
+
+# Job-board account identity + saved logins (hold a real password)
+config/account.yml
+config/sessions/
+# Chrome profile used for the one-time Google login — holds live auth cookies
+config/browser-profile/
+
+# Run logs and one-shot patch backups
+scan-live.log
+queue-build*.log
+apply-run.log
+signup-*.log
+*.bak
+*.bak2
+*.bak3
+.env
+
+# Local archive of superseded files and old logs
+archive/
+data/agent/
+test/.tmp-store/
+
+# ── Personal job-search data (this repo is PUBLIC — keep it out) ──────────────
+# The tracker ledger and dashboard inline 267 employer addresses, appointment
+# locations and consent URLs whose tokens act on his applications. The scripts
+# that build them are tracked; their output never is.
+tracker/tracker.json
+tracker/dashboard.html
+tracker/appointments.json
+tracker/actions.json
+tracker/preview.png
+chains/.lidl-applied.json
+email-route/*.json
+
+# CVs carry a home address and mobile number.
+cv-de.md
+cv-de-*.md
+
+# Profile backups are not covered by the exact-path rule above.
+config/profile.yml.*
+config/gmail-*.json
+
+# Working copies, probes and backups
+*.bak
+*.bak-*
+*.tmp.pdf
+_probe*.mjs
+.probe-*.mjs
+.inspect-*.mjs
+assets/aimene-djebaili*
